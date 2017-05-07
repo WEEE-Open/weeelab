@@ -1,0 +1,241 @@
+#!/usr/bin/python2.7
+
+'''
+WELAB - Lab operators management module.
+Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+import os
+import sys
+from datetime import datetime
+
+LOG_PATH = "log.dat"
+USERS_PATH = "users.dat"
+TMP_PATH = "temp.dat"
+
+
+def help(scriptName, forWhat):
+    if forWhat == "login":
+        print "usage: " + scriptName + " login <username>"
+        print "Rosetta: Username format is 'first.last'"
+        sys.exit()
+
+    elif forWhat == "logout":
+        print "usage: " + scriptName + " logout <username>"
+        print "Rosetta: Username format is 'first.last'"
+        sys.exit()
+
+    elif forWhat == "show":
+        print "usage: " + scriptName + " show <item>"
+        print "  available items:"
+        print "    log : View log file."
+        print "    ops : View list of operators in lab now."
+        sys.exit()
+
+    else:
+        print "WELAB - Lab operators management module."
+        print "Author: Stefano Enrico Mendola"
+        print "Copyright (C) 2017 WeeeOpen - Politecnico di Torino"
+        print "This program comes with ABSOLUTELY NO WARRANTY."
+        print "Since this is a free software, you are welcome"
+        print "to redistribute it under the terms of the GNU GPLv3.\n"
+        print "  Available commands:"
+        print "    login  <username> : Sign access to the lab."
+        print "    logout <username> : Sign quit from the lab."
+        print "    show   <item>     : Retrieve informations."
+        sys.exit()
+
+
+# Check if log file exists.
+def checkLogFile():
+    if os.path.isfile(LOG_PATH) is False:
+        print "error: Log file not found."
+        sys.exit()
+
+
+# Check if users list file exists.
+def checkUsersFile():
+    if os.path.isfile(USERS_PATH) is False:
+        print "error: Users list not found."
+        sys.exit()
+
+
+# Check if an username exists in users list file.
+def checkMember(username):
+    checkUsersFile()
+    usersFile = open(USERS_PATH, "r")
+    found = False
+    for line in usersFile:
+        # Remove newline character from the line read from file
+        line = line.replace("\n","")
+        if line == username:
+            found = True
+    usersFile.close()
+    if found is False:
+        print "error: Username not recognized."
+        print "Rosetta: Maybe you misspelled it or you're an intruder."
+        sys.exit()
+
+
+# Check if user is already logged in.
+def isLoggedIn(username):
+    logFile = open(LOG_PATH, "r")
+    logged = False
+    for line in logFile:
+        if ("INLAB" in line) and (username in line):
+            logged = True
+    logFile.close()
+    return logged
+
+
+def login(username):
+    checkMember(username)
+    currTime = datetime.now().strftime("%d/%m/%Y %H:%M ")
+    loginString = currTime + "INLAB " + username + "\n"
+
+    # if log file does not exist, create it
+    if os.path.isfile(LOG_PATH) is False:
+        logFile = open(LOG_PATH, "w")
+        logFile.write(loginString)
+        logFile.close()
+        print "Rosetta: Login successful!"
+
+    elif isLoggedIn(username) is True:
+        print "Rosetta: You are already logged in."
+
+    else:
+        os.rename(LOG_PATH, TMP_PATH)
+        logFile = open(LOG_PATH, "a")
+        logFile.write(loginString)
+        tempFile = open(TMP_PATH, "r")
+        logFile.write(tempFile.read())
+        logFile.close()
+        tempFile.close()
+        os.remove(TMP_PATH)
+        print "Rosetta: Login successful!"
+
+
+def logout(username):
+    checkMember(username)
+    checkLogFile()
+    found = False
+    outTime = datetime.now().strftime("%H:%M")
+    os.rename(LOG_PATH, TMP_PATH)
+    tempFile = open(TMP_PATH, "r")
+    logFile = open(LOG_PATH, "a")
+
+    for line in tempFile:
+        if ("INLAB" in line) and (username in line):
+            found = True
+            line = line.replace("INLAB", outTime)
+            logFile.write(line)
+            print "Rosetta: Logout successful!"
+        else:
+            logFile.write(line)
+
+    if found is False:
+        print "Rosetta: You are not in the lab!"
+
+    logFile.close()
+    tempFile.close()
+    os.remove(TMP_PATH)
+
+
+def show(item):
+    if item == "log":
+        checkLogFile()
+        print "Rosetta: Reading log file...\n"
+        logFile = open(LOG_PATH, "r")
+        for line in logFile:
+            print line,
+        logFile.close()
+
+    elif item == "ops":
+        count = 0
+        currDay = datetime.now().strftime("%d/%m/%Y")
+        checkLogFile()
+        logFile = open(LOG_PATH, "r")
+        for line in logFile:
+            if ("INLAB" in line) and (currDay in line):
+                count += 1
+                print line[23:],
+        if count == 0:
+            print "Rosetta: Nobody is in lab right now."
+        elif count == 1:
+            print "Rosetta: There is one operator in lab right now."
+        else:
+            print "Rosetta: There are {c} operators in lab right now.".format(c=count)
+
+    # Uovo di Pasqua
+    elif item == "tits" or item == "pussy" or item == "boobs":
+        print "Rosetta: Sadly my constructors haven't considered to add"
+        print "         such component in my case, but I could hold your"
+        print "         beer if you want [Y/n]",
+        response = raw_input()
+        if response == "y" or response == "Y" or response == "":
+            os.system("eject /dev/cdrom")
+            print "Rosetta: Alright! Lean here your beer :-)"
+        else:
+            print "Rosetta: As you desire! :-)"
+    else:
+        print "error: Invalid item detected."
+        print "Rosetta: Try with 'help show'."
+
+
+def main(args):
+    if len(args) < 2:
+        print "usage: " + args[0] + " <command> <arguments>"
+        sys.exit()
+    command = args[1]
+
+    # Add commands here
+    if command == "help":
+        if len(args) < 3:
+            help(args[0], "default")
+        elif len(args) >= 3:
+            help(args[0], args[2])
+
+    elif command == "login":
+        if len(args) != 3:
+            print "usage: " + args[0] + " login <username>"
+            sys.exit()
+        else:
+            login(args[2])
+
+    elif command == "logout":
+        if len(args) != 3:
+            print "usage: " + args[0] + " logout <username>"
+            sys.exit()
+        else:
+            logout(args[2])
+
+    elif command == "show":
+        if len(args) != 3:
+            print "usage: " + args[0] + " show <item>"
+            print "  available items:"
+            print "    log : View log file."
+            print "    ops : View list of operators in lab now."
+            sys.exit()
+        else:
+            show(args[2])
+    else:
+        print "error: Invalid command -> " + args[1]
+        print "Rosetta: Try with '" + args[0] + " help'"
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+
