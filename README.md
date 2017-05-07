@@ -16,8 +16,8 @@ Available options:
       `ops` : View a list of operators in lab now.
 
 ## NOTES
-- The file `log.dat` is filled by adding new lines on top. That's crucial because
-makes searching for last login easier and is more comfortable·
+- The file `log.dat` is filled by adding new lines on top. This is important because
+makes searching for last login easier and it's even more comfortable.
 - The file `users.dat` is a simple text file containing usernames in the format
 firstname.lastname, one for each line.
 
