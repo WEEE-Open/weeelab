@@ -180,7 +180,7 @@ def show(item):
             print "Rosetta: There are {c} operators in lab right now.".format(c=count)
 
     # Uovo di Pasqua
-    elif item == "tits" or item == "pussy" or item == "boobs":
+    elif item == "easteregg":
         print "Rosetta: Sadly my constructors haven't considered to add"
         print "         such component in my case, but I could hold your"
         print "         beer if you want [Y/n]",
