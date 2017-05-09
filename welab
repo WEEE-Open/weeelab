@@ -155,6 +155,9 @@ def logout(username):
             line = line.replace("INLAB",workTime(timein,timeout))
             line = line.replace("\n","")
             workdone = raw_input(HOSTNAME+": What have you done? -> ")
+            while len(workdone) > 128:
+                print HOSTNAME+": I didn't ask you the story of your life!"
+                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY] -> ")
             outline = line + " :: " + workdone + "\n"
             logFile.write(outline)
             print HOSTNAME + ": Logout successful!"
