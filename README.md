@@ -25,19 +25,8 @@ This is important because makes searching for last login easier and it's even mo
 firstname.lastname, one for each line.
 
 
-## TODO
-- [ ] Change login and logout time format to [gg/mm/aaaa hh:mm:ss]  
-e.g: `[25/12/2018 12:34] [26/12/2018 09:00] <john.doe>`
-
-- [ ] Print to log file the number of hours passed in lab after login and logout time. (logout function)  
-e.g: `[11/04/2017 11:30] [11/04/2017 13:00] [01:30] <john.doe>`
-
-
-- [ ] Implement an input string in function "logout" in order to save to log file a short  
-description of the work done [max length: about 128 characters]  
-e.g: `[11/04/2017 11:30] [11/04/2017 13:00] [01:30] <john.doe> :: Won for two times at Windows 95's solitaire.`  
-
-- [ ] Implement a function to calculate stats for a user and for all users and save these stats
+## ToDo
+- [ ] Implement a function to compute stats for a user and for all users and save these stats
 to an external file or print them to screen.
 
 - [ ] In function login: add a function to parse the first line of log.dat file in order to discover

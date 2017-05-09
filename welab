@@ -22,6 +22,8 @@ import os
 import sys
 from datetime import datetime
 
+VERSION = "1.1"
+HOSTNAME = "schifomacchina"
 LOG_PATH = "log.dat"
 USERS_PATH = "users.dat"
 TMP_PATH = "temp.dat"
@@ -30,24 +32,24 @@ TMP_PATH = "temp.dat"
 def help(scriptName, forWhat):
     if forWhat == "login":
         print "usage: " + scriptName + " login <username>"
-        print "Rosetta: Username format is 'first.last'"
+        print HOSTNAME + ": Username format is 'first.last'"
         sys.exit()
 
     elif forWhat == "logout":
         print "usage: " + scriptName + " logout <username>"
-        print "Rosetta: Username format is 'first.last'"
+        print HOSTNAME + ": Username format is 'first.last'"
         sys.exit()
 
     elif forWhat == "show":
-        print "usage: " + scriptName + " show <item>"
-        print "  available items:"
+        print "usage: " + scriptName + " show <option>"
+        print "  available options:"
         print "    log : View log file."
         print "    ops : View list of operators in lab now."
         sys.exit()
 
     else:
-        print "WELAB - Lab operators management module."
-        print "Author: Stefano Enrico Mendola"
+        print "WELAB v"+VERSION+" - Lab operators management module."
+        print "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)"
         print "Copyright (C) 2017 WeeeOpen - Politecnico di Torino"
         print "This program comes with ABSOLUTELY NO WARRANTY."
         print "Since this is a free software, you are welcome"
@@ -55,7 +57,7 @@ def help(scriptName, forWhat):
         print "  Available commands:"
         print "    login  <username> : Sign access to the lab."
         print "    logout <username> : Sign quit from the lab."
-        print "    show   <item>     : Retrieve informations."
+        print "    show   <option>   : Retrieve informations."
         sys.exit()
 
 
@@ -86,7 +88,7 @@ def checkMember(username):
     usersFile.close()
     if found is False:
         print "error: Username not recognized."
-        print "Rosetta: Maybe you misspelled it or you're an intruder."
+        print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
         sys.exit()
 
 
@@ -103,18 +105,18 @@ def isLoggedIn(username):
 
 def login(username):
     checkMember(username)
-    currTime = datetime.now().strftime("%d/%m/%Y %H:%M ")
-    loginString = currTime + "INLAB " + username + "\n"
+    currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
+    loginString = "["+currTime+"] "+"[----------------] [INLAB] "+"<"+username+">"+"\n"
 
     # if log file does not exist, create it
     if os.path.isfile(LOG_PATH) is False:
         logFile = open(LOG_PATH, "w")
         logFile.write(loginString)
         logFile.close()
-        print "Rosetta: Login successful!"
+        print HOSTNAME + ": Login successful!"
 
     elif isLoggedIn(username) is True:
-        print "Rosetta: You are already logged in."
+        print HOSTNAME + ": You are already logged in."
 
     else:
         os.rename(LOG_PATH, TMP_PATH)
@@ -125,14 +127,21 @@ def login(username):
         logFile.close()
         tempFile.close()
         os.remove(TMP_PATH)
-        print "Rosetta: Login successful!"
+        print HOSTNAME + ": Login successful!"
+
+
+# Returns the time spent in lab formatted as HH:MM
+def workTime(timein, timeout):
+    hours = int(timeout[:2]) - int(timein[:2])
+    mins = int(timeout[3:5]) - int(timein[3:5])
+    return str(hours).zfill(2)+":"+str(mins).zfill(2)
 
 
 def logout(username):
     checkMember(username)
     checkLogFile()
     found = False
-    outTime = datetime.now().strftime("%H:%M")
+    outTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     os.rename(LOG_PATH, TMP_PATH)
     tempFile = open(TMP_PATH, "r")
     logFile = open(LOG_PATH, "a")
@@ -140,14 +149,20 @@ def logout(username):
     for line in tempFile:
         if ("INLAB" in line) and (username in line):
             found = True
-            line = line.replace("INLAB", outTime)
-            logFile.write(line)
-            print "Rosetta: Logout successful!"
+            timein = line[12:17]
+            timeout = outTime[11:17]
+            line = line.replace("----------------",outTime)
+            line = line.replace("INLAB",workTime(timein,timeout))
+            line = line.replace("\n","")
+            workdone = raw_input(HOSTNAME+": What have you done? -> ")
+            outline = line + " :: " + workdone + "\n"
+            logFile.write(outline)
+            print HOSTNAME + ": Logout successful!"
         else:
             logFile.write(line)
 
-    if found is False:
-        print "Rosetta: You are not in the lab!"
+    if not found:
+        print HOSTNAME + ": You are not in lab!"
 
     logFile.close()
     tempFile.close()
@@ -157,7 +172,7 @@ def logout(username):
 def show(item):
     if item == "log":
         checkLogFile()
-        print "Rosetta: Reading log file...\n"
+        print HOSTNAME + ": Reading log file...\n"
         logFile = open(LOG_PATH, "r")
         for line in logFile:
             print line,
@@ -167,32 +182,34 @@ def show(item):
         count = 0
         currDay = datetime.now().strftime("%d/%m/%Y")
         checkLogFile()
+        print HOSTNAME + ": Reading log file...\n"
         logFile = open(LOG_PATH, "r")
         for line in logFile:
             if ("INLAB" in line) and (currDay in line):
                 count += 1
-                print line[23:],
+                # TODO: Use parse to extract username from line
+                print "> " + line[47:line.rfind(">")]
         if count == 0:
-            print "Rosetta: Nobody is in lab right now."
+            print HOSTNAME + ": Nobody is in lab right now."
         elif count == 1:
-            print "Rosetta: There is one operator in lab right now."
+            print HOSTNAME + ": There is one operator in lab right now."
         else:
-            print "Rosetta: There are {c} operators in lab right now.".format(c=count)
+            print HOSTNAME + ": There are {c} operators in lab right now.".format(c=count)
 
     # Uovo di Pasqua
-    elif item == "easteregg":
-        print "Rosetta: Sadly my constructors haven't considered to add"
-        print "         such component in my case, but I could hold your"
-        print "         beer if you want [Y/n]",
-        response = raw_input()
-        if response == "y" or response == "Y" or response == "":
-            os.system("eject /dev/cdrom")
-            print "Rosetta: Alright! Lean here your beer :-)"
-        else:
-            print "Rosetta: As you desire! :-)"
-    else:
-        print "error: Invalid item detected."
-        print "Rosetta: Try with 'help show'."
+    # elif item == "easteregg":
+    #     print HOSTNAME + ": Sadly my constructors haven't considered to add"
+    #     print "                such component in my system, but I could hold your"
+    #     print "                beer if you want [Y/n]",
+    #     response = raw_input()
+    #     if response == "y" or response == "Y" or response == "":
+    #         os.system("eject /dev/cdrom")
+    #         print HOSTNAME + ": Alright! Lean here your beer :-)"
+    #     else:
+    #         print HOSTNAME + ": As you desire! :-)"
+    # else:
+    #     print "error: Invalid option detected."
+    #     print HOSTNAME + ": Try with 'help show'."
 
 
 def main(args):
@@ -233,7 +250,7 @@ def main(args):
             show(args[2])
     else:
         print "error: Invalid command -> " + args[1]
-        print "Rosetta: Try with '" + args[0] + " help'"
+        print HOSTNAME + ": Try with '" + args[0] + " help'"
 
 
 if __name__ == '__main__':
