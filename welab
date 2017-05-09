@@ -24,9 +24,9 @@ from datetime import datetime
 
 VERSION = "1.1"
 HOSTNAME = "schifomacchina"
-LOG_PATH = "log.dat"
-USERS_PATH = "users.dat"
-TMP_PATH = "temp.dat"
+LOG_PATH = "~/.welab/log.dat"
+USERS_PATH = "~/.welab/users.dat"
+TMP_PATH = "~/.welab/temp.dat"
 
 
 def help(scriptName, forWhat):
