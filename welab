@@ -24,9 +24,9 @@ from datetime import datetime
 
 VERSION = "1.1"
 HOSTNAME = "schifomacchina"
-LOG_PATH = "~/.welab/log.dat"
-USERS_PATH = "~/.welab/users.dat"
-TMP_PATH = "~/.welab/temp.dat"
+LOG_PATH = "/home/weeeopen/.welab/log.dat"
+USERS_PATH = "/home/weeeopen/.welab/users.dat"
+TMP_PATH = "/home/weeeopen/.welab/temp.dat"
 
 
 def help(scriptName, forWhat):
@@ -134,6 +134,10 @@ def login(username):
 def workTime(timein, timeout):
     hours = int(timeout[:2]) - int(timein[:2])
     mins = int(timeout[3:5]) - int(timein[3:5])
+    if hours < 0:
+	hours += 24
+    if mins < 0:
+	mins += 60
     return str(hours).zfill(2)+":"+str(mins).zfill(2)
 
 
