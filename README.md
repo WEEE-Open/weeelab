@@ -1,6 +1,6 @@
 # welab
 [![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-![Version](https://img.shields.io/badge/version-1.1-yellow.svg)
+![Version](https://img.shields.io/badge/version-1.2-yellow.svg)
 
 Python script for garbaging paper sign sheet.
 
