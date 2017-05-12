@@ -83,7 +83,9 @@ def checkMember(username):
     for line in usersFile:
         # Remove newline character from the line read from file
         line = line.replace("\n","")
-        if line == username:
+        words = line.split()
+        if username in words:
+            username = words[0]
             found = True
     usersFile.close()
     if found is False:
