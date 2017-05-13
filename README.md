@@ -1,6 +1,6 @@
 # welab
 [![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-![Version](https://img.shields.io/badge/version-1.2-yellow.svg)
+![Version](https://img.shields.io/badge/version-1.2.2-blue.svg)
 
 Python script for garbaging paper sign sheet.
 
@@ -22,7 +22,8 @@ Available options:
 - The file `log.dat` is filled by adding new lines on top.
 This is important because makes searching for last login easier and it's even more comfortable.
 - The file `users.dat` is a simple text file containing usernames in the format
-firstname.lastname, one for each line.
+`firstname.lastname serialNumber`, one for each line.
+- The `login` and `logout` functions now work with serial numbers as well.
 
 
 ## ToDo

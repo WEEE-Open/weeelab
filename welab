@@ -22,7 +22,7 @@ import os
 import sys
 from datetime import datetime
 
-VERSION = "1.2"
+VERSION = "1.2.2"
 HOSTNAME = "schifomacchina"
 LOG_PATH = "/home/weeeopen/.welab/log.dat"
 USERS_PATH = "/home/weeeopen/.welab/users.dat"
@@ -32,12 +32,14 @@ TMP_PATH = "/home/weeeopen/.welab/temp.dat"
 def help(scriptName, forWhat):
     if forWhat == "login":
         print "usage: " + scriptName + " login <username>"
-        print HOSTNAME + ": Username format is 'first.last'"
+        print HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'"
+        print "                where XXXXXX is your serial number."
         sys.exit()
 
     elif forWhat == "logout":
         print "usage: " + scriptName + " logout <username>"
         print HOSTNAME + ": Username format is 'first.last'"
+        print "                where XXXXXX is your serial number."
         sys.exit()
 
     elif forWhat == "show":
@@ -92,10 +94,12 @@ def checkMember(username):
         print "error: Username not recognized."
         print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
         sys.exit()
+    return username
 
 
 # Check if user is already logged in.
 def isLoggedIn(username):
+    username = checkMember(username)
     logFile = open(LOG_PATH, "r")
     logged = False
     for line in logFile:
@@ -106,7 +110,7 @@ def isLoggedIn(username):
 
 
 def login(username):
-    checkMember(username)
+    username = checkMember(username)
     currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     loginString = "["+currTime+"] "+"[----------------] [INLAB] "+"<"+username+">"+"\n"
 
@@ -137,15 +141,15 @@ def workTime(timein, timeout):
     hours = int(timeout[:2]) - int(timein[:2])
     mins = int(timeout[3:5]) - int(timein[3:5])
     if hours < 0:
-	hours += 24
+        hours += 24
     if mins < 0:
-	mins += 60
-	hours -= 1
+        mins += 60
+        hours -= 1
     return str(hours).zfill(2)+":"+str(mins).zfill(2)
 
 
 def logout(username):
-    checkMember(username)
+    username = checkMember(username)
     checkLogFile()
     found = False
     outTime = datetime.now().strftime("%d/%m/%Y %H:%M")
