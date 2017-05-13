@@ -23,7 +23,8 @@ Available options:
 This is important because makes searching for last login easier and it's even more comfortable.
 - The file `users.dat` is a simple text file containing usernames in the format
 `firstname.lastname serialNumber`, one for each line.
-- The `login` and `logout` functions now work with serial numbers as well.
+- The `login` and `logout` functions now work with serial numbers and
+with nicknames as well.
 
 
 ## ToDo

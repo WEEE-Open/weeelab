@@ -34,12 +34,14 @@ def help(scriptName, forWhat):
         print "usage: " + scriptName + " login <username>"
         print HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'"
         print "                where XXXXXX is your serial number."
+        print "                You can even use an alias if defined."
         sys.exit()
 
     elif forWhat == "logout":
         print "usage: " + scriptName + " logout <username>"
         print HOSTNAME + ": Username format is 'first.last'"
         print "                where XXXXXX is your serial number."
+        print "                You can even use an alias if defined."
         sys.exit()
 
     elif forWhat == "show":
