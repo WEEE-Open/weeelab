@@ -22,7 +22,7 @@ import os
 import sys
 from datetime import datetime
 
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 HOSTNAME = "schifomacchina"
 LOG_PATH = "/home/weeeopen/.welab/log.dat"
 USERS_PATH = "/home/weeeopen/.welab/users.dat"
@@ -111,6 +111,10 @@ def isLoggedIn(username):
     return logged
 
 
+def nameExtr(username):
+    return username.split('.')[0].capitalize() + " " + username.split('.')[1].capitalize()
+
+
 def login(username):
     username = checkMember(username)
     currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -121,10 +125,10 @@ def login(username):
         logFile = open(LOG_PATH, "w")
         logFile.write(loginString)
         logFile.close()
-        print HOSTNAME + ": Login successful!"
+        print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
 
     elif isLoggedIn(username) is True:
-        print HOSTNAME + ": You are already logged in."
+        print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
 
     else:
         os.rename(LOG_PATH, TMP_PATH)
@@ -135,8 +139,7 @@ def login(username):
         logFile.close()
         tempFile.close()
         os.remove(TMP_PATH)
-        print HOSTNAME + ": Login successful!"
-
+        print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
 
 # Returns the time spent in lab formatted as HH:MM
 def workTime(timein, timeout):
@@ -173,12 +176,12 @@ def logout(username):
                 workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY] -> ")
             outline = line + " :: " + workdone + "\n"
             logFile.write(outline)
-            print HOSTNAME + ": Logout successful!"
+            print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
         else:
             logFile.write(line)
 
     if not found:
-        print HOSTNAME + ": You are not in lab!"
+        print HOSTNAME + ": " + nameExtr(username) + "is not in lab!"
 
     logFile.close()
     tempFile.close()
