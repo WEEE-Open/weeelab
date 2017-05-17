@@ -1,6 +1,6 @@
 # welab
 [![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-![Version](https://img.shields.io/badge/version-1.2.3-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3-yellow.svg)
 
 Python script for garbaging paper sign sheet.
 
@@ -30,9 +30,3 @@ with nicknames as well.
 ## ToDo
 - [ ] Implement a function to compute stats for a user and for all users and save these stats
 to an external file or print them to screen.
-
-- [ ] In function login: add a function to parse the first line of log.dat file in order to discover
-if the last logout was in the previous month. If last logout comes from the previous month,
-print an error message saying that "it's time for backup" and quit.
-Then the operator must move the log.dat file into another folder or into another
-storage support in order to backup/print it.

@@ -1,7 +1,7 @@
 #!/usr/bin/python2.7
 
 '''
-WELAB - Lab operators management module.
+WELAB - Log management module for garbaging paper sign sheet.
 Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 
     This program is free software: you can redistribute it and/or modify
@@ -22,11 +22,10 @@ import os
 import sys
 from datetime import datetime
 
-VERSION = "1.2.3"
+VERSION = "1.3"
 HOSTNAME = "schifomacchina"
-LOG_PATH = "/home/weeeopen/.welab/log.dat"
-USERS_PATH = "/home/weeeopen/.welab/users.dat"
-TMP_PATH = "/home/weeeopen/.welab/temp.dat"
+LOG_PATH = "/home/ste/.welab/log.dat"
+USERS_PATH = "/home/ste/.welab/users.dat"
 
 
 def help(scriptName, forWhat):
@@ -82,17 +81,20 @@ def checkUsersFile():
 # Check if an username exists in users list file.
 def checkMember(username):
     checkUsersFile()
-    usersFile = open(USERS_PATH, "r")
     found = False
+    usersFile = open(USERS_PATH, "r")
+
     for line in usersFile:
         # Remove newline character from the line read from file
         line = line.replace("\n","")
         words = line.split()
         if username in words:
-            username = words[0]
             found = True
+            username = words[0]
+            break
     usersFile.close()
-    if found is False:
+
+    if not found:
         print "error: Username not recognized."
         print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
         sys.exit()
@@ -102,11 +104,12 @@ def checkMember(username):
 # Check if user is already logged in.
 def isLoggedIn(username):
     username = checkMember(username)
-    logFile = open(LOG_PATH, "r")
     logged = False
+    logFile = open(LOG_PATH, "r")
     for line in logFile:
         if ("INLAB" in line) and (username in line):
             logged = True
+            break
     logFile.close()
     return logged
 
@@ -115,31 +118,61 @@ def nameExtr(username):
     return username.split('.')[0].capitalize() + " " + username.split('.')[1].capitalize()
 
 
+# Check if inputFile is empty.
+def isEmpty(inputFile):
+    if str(inputFile.read())[:1] == "":
+        inputFile.close()
+        return True
+    else:
+        inputFile.seek(0)
+        return False
+
+
+def createBackupIfNecessary():
+    logFile = open(LOG_PATH, "r")
+    if isEmpty(logFile) is False:
+        lastLine = str(logFile.read())[4:11]
+        logFile.close()
+
+        currMonth = int(datetime.now().strftime("%m"))
+        currYear = int(datetime.now().strftime("%Y"))
+        lastMonth = int(datetime.now().strptime(lastLine,"%m/%Y").strftime("%m"))
+        lastYear = int(datetime.now().strptime(lastLine,"%m/%Y").strftime("%Y"))
+
+        if (currMonth > lastMonth) or (currYear > lastYear):
+            print HOSTNAME + ": Backing up log file... ",
+            os.rename(LOG_PATH, LOG_PATH + str(lastYear) + str(lastMonth).zfill(2))
+            print "Done!"
+            logFile = open(LOG_PATH, "w")
+            logFile.close()
+            print HOSTNAME + ": New log file was created."
+
+
 def login(username):
+    checkLogFile()
+    createBackupIfNecessary()
     username = checkMember(username)
     currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     loginString = "["+currTime+"] "+"[----------------] [INLAB] "+"<"+username+">"+"\n"
 
-    # if log file does not exist, create it
-    if os.path.isfile(LOG_PATH) is False:
-        logFile = open(LOG_PATH, "w")
-        logFile.write(loginString)
-        logFile.close()
-        print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
-
-    elif isLoggedIn(username) is True:
+    if isLoggedIn(username):
         print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
-
     else:
-        os.rename(LOG_PATH, TMP_PATH)
-        logFile = open(LOG_PATH, "a")
-        logFile.write(loginString)
-        tempFile = open(TMP_PATH, "r")
-        logFile.write(tempFile.read())
+        logList = []
+        logList.append(loginString)
+
+        logFile = open(LOG_PATH, "r")
+        for line in logFile:
+            logList.append(line)
         logFile.close()
-        tempFile.close()
-        os.remove(TMP_PATH)
+
+        logFile = open(LOG_PATH, "w")
+        for line in logList:
+            logFile.write(line)
+        logFile.close()
+
         print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
+
 
 # Returns the time spent in lab formatted as HH:MM
 def workTime(timein, timeout):
@@ -154,60 +187,61 @@ def workTime(timein, timeout):
 
 
 def logout(username):
-    username = checkMember(username)
     checkLogFile()
+    username = checkMember(username)
+    currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     found = False
-    outTime = datetime.now().strftime("%d/%m/%Y %H:%M")
-    os.rename(LOG_PATH, TMP_PATH)
-    tempFile = open(TMP_PATH, "r")
-    logFile = open(LOG_PATH, "a")
 
-    for line in tempFile:
+    logList = []
+    logFile = open(LOG_PATH, "r")
+    for line in logFile:
         if ("INLAB" in line) and (username in line):
             found = True
-            timein = line[12:17]
-            timeout = outTime[11:17]
-            line = line.replace("----------------",outTime)
-            line = line.replace("INLAB",workTime(timein,timeout))
+            loginTime = line[12:17]
+            logouTime = currTime[11:17]
+            line = line.replace("----------------",currTime)
+            line = line.replace("INLAB",workTime(loginTime,logouTime))
             line = line.replace("\n","")
-            workdone = raw_input(HOSTNAME+": What have you done? -> ")
+            workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
             while len(workdone) > 128:
                 print HOSTNAME+": I didn't ask you the story of your life!"
-                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY] -> ")
-            outline = line + " :: " + workdone + "\n"
-            logFile.write(outline)
-            print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
-        else:
-            logFile.write(line)
-
-    if not found:
-        print HOSTNAME + ": " + nameExtr(username) + "is not in lab!"
-
+                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+            line = line + " :: " + workdone + "\n"
+        logList.append(line)  # Store everything in the list
     logFile.close()
-    tempFile.close()
-    os.remove(TMP_PATH)
+
+    if found:
+        # Writing everything to log file
+        logFile = open(LOG_PATH, "w")
+        for line in logList:
+            logFile.write(line)
+        logFile.close()
+        print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
+    else:
+        print HOSTNAME + ": " + nameExtr(username) + " is not in lab!"
 
 
-def show(item):
-    if item == "log":
-        checkLogFile()
+def show(option):
+    checkLogFile()
+
+    if option == "log":
         print HOSTNAME + ": Reading log file...\n"
         logFile = open(LOG_PATH, "r")
         for line in logFile:
             print line,
         logFile.close()
 
-    elif item == "ops":
+    elif option == "ops":
         count = 0
         currDay = datetime.now().strftime("%d/%m/%Y")
-        checkLogFile()
         print HOSTNAME + ": Reading log file...\n"
         logFile = open(LOG_PATH, "r")
         for line in logFile:
             if ("INLAB" in line) and (currDay in line):
                 count += 1
-                # TODO: Use parse to extract username from line
-                print "> " + line[47:line.rfind(">")]
+                print "> " + nameExtr(line[47:line.rfind(">")])
+        logFile.close()
+
         if count == 0:
             print HOSTNAME + ": Nobody is in lab right now."
         elif count == 1:
@@ -216,7 +250,7 @@ def show(item):
             print HOSTNAME + ": There are {c} operators in lab right now.".format(c=count)
 
     # Uovo di Pasqua
-    # elif item == "easteregg":
+    # elif option == "beer":
     #     print HOSTNAME + ": Sadly my constructors haven't considered to add"
     #     print "                such component in my system, but I could hold your"
     #     print "                beer if you want [Y/n]",
@@ -268,7 +302,7 @@ def main(args):
         else:
             show(args[2])
     else:
-        print "error: Invalid command -> " + args[1]
+        print "error: Invalid command detected -> " + args[1]
         print HOSTNAME + ": Try with 'welab help'"
 
 
