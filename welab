@@ -26,6 +26,7 @@ VERSION = "1.3"
 HOSTNAME = "schifomacchina"
 LOG_PATH = "/home/weeeopen/.welab/log.dat"
 USERS_PATH = "/home/weeeopen/.welab/users.dat"
+BACKUP_PATH = "/home/weeeopen/ownCloud/weeeopen/Welab/"
 
 
 def help(scriptName, forWhat):
@@ -51,7 +52,7 @@ def help(scriptName, forWhat):
         sys.exit()
 
     else:
-        print "WELAB v"+VERSION+" - Lab operators management module."
+        print "WELAB v"+VERSION+" - Log management module for garbaging paper sign sheet."
         print "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)"
         print "Copyright (C) 2017 WeeeOpen - Politecnico di Torino"
         print "This program comes with ABSOLUTELY NO WARRANTY."
@@ -141,7 +142,10 @@ def createBackupIfNecessary():
 
         if (currMonth > lastMonth) or (currYear > lastYear):
             print HOSTNAME + ": Backing up log file... ",
-            os.rename(LOG_PATH, LOG_PATH + str(lastYear) + str(lastMonth).zfill(2))
+            newPath = LOG_PATH[:len(LOG_PATH)-4] + str(lastYear) + str(lastMonth).zfill(2)+".dat"
+            os.rename(LOG_PATH, newPath)
+            # Send to ownCloud folder
+            os.system("cp "+newPath+" "+BACKUP_PATH+"log"+str(lastYear)+str(lastMonth).zfill(2)+".txt")
             print "Done!"
             logFile = open(LOG_PATH, "w")
             logFile.close()
@@ -170,7 +174,8 @@ def login(username):
         for line in logList:
             logFile.write(line)
         logFile.close()
-
+        # Send to ownCloud folder
+        os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
         print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
 
 
@@ -216,6 +221,8 @@ def logout(username):
         for line in logList:
             logFile.write(line)
         logFile.close()
+        # Send to ownCloud folder
+        os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
         print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
     else:
         print HOSTNAME + ": " + nameExtr(username) + " is not in lab!"
@@ -308,4 +315,3 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
-
