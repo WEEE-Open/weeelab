@@ -28,7 +28,7 @@ HOSTNAME = "schifomacchina"
 HOSTUSER = "weeeopen"
 LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
 USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
-BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME+"/"
+BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
 
 
 def help(forWhat):
