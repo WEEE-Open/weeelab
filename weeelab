@@ -251,9 +251,9 @@ def show(option):
         if count == 0:
             print HOSTNAME + ": Nobody is in lab right now."
         elif count == 1:
-            print HOSTNAME + ": There is one operator in lab right now."
+            print HOSTNAME + ": There is one student in lab right now."
         else:
-            print HOSTNAME + ": There are {c} operators in lab right now.".format(c=count)
+            print HOSTNAME + ": There are {c} students in lab right now.".format(c=count)
 
     # Uovo di Pasqua
     # elif option == "beer":
