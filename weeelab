@@ -255,6 +255,9 @@ def show(option):
         else:
             print HOSTNAME + ": There are {c} students in lab right now.".format(c=count)
 
+    elif option == "help":
+        help("default")
+
     # Uovo di Pasqua
     # elif option == "beer":
     #     print HOSTNAME + ": Sadly my constructors haven't considered to add"
