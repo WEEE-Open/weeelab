@@ -118,7 +118,9 @@ def isLoggedIn(username):
 
 
 def nameExtr(username):
-    return username.split('.')[0].capitalize() + " " + username.split('.')[1].capitalize()
+    firstName = username.split('.')[0].capitalize()
+    lastName = username.split('.')[1].capitalize()
+    return firstName + " " + lastName
 
 
 # Check if inputFile is empty.
