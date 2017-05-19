@@ -22,7 +22,7 @@ import os
 import sys
 from datetime import datetime
 
-VERSION = "1.3.5"
+VERSION = "1.3.6"
 EXECNAME = "weeelab"
 HOSTNAME = "schifomacchina"
 HOSTUSER = "weeeopen"
@@ -53,6 +53,11 @@ def help(forWhat):
         print "    inlab : View a list of students in lab now."
         sys.exit()
 
+    elif forWhat == "stats":
+        print "usage: "+EXECNAME+" stats <username>"
+        print HOSTNAME+": If you wish to view stats for everybody,"
+        print "                use \""+EXECNAME+" stats everybody\""
+
     else:
         print "WEEELAB v"+VERSION+" - Log management module for garbaging paper sign sheet."
         print "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)"
@@ -64,6 +69,7 @@ def help(forWhat):
         print "    login  <username> : Sign access to the lab."
         print "    logout <username> : Sign quit from the lab."
         print "    show   <option>   : Retrieve informations."
+        print "    stats  <username> : Compute stats for a user or for all users."
         sys.exit()
 
 
@@ -279,6 +285,49 @@ def show(option):
         print "error: option "+option+" is not defined."
 
 
+def totWorkTime(username):
+    checkLogFile()
+    timeSpent = 0
+    logFile = open(LOG_PATH, "r")
+    for line in logFile:
+        if (username in line) and not ("INLAB" in line):
+            timeSpent += ((int(line[39:41])*60) + int(line[42:44]))
+    logFile.close()
+    return str(timeSpent / 60)+"h " + str(timeSpent % 60)+"m"
+
+
+def stats(username):
+    print HOSTNAME+": Computing stats...\n"
+    currMonth = datetime.now().strftime(" [%B %Y]")
+
+    # Compute stats for all users (Extremely stupid algorithm, but works fine)
+    # TODO: Improve this algorithm, maybe by parsing the log file once.
+    #       Open log file and users file, load all usernames in a tuple
+    #       [ str(username), int(workTime) ]. Close users file and read log file
+    #       line per line summing the workTime of each user found in log,
+    #       and continue reading the log file till its end, saving all to the tuple.
+    #       At the end, close the log file and print stats reading data from the tuple.
+    if username == "everybody":
+        checkLogFile()
+        checkUsersFile()
+        usersFile = open(USERS_PATH, "r")
+        for line in usersFile:
+            currUser = line.split(" ")[0]
+            print "[+]     Name: "+nameExtr(currUser)
+            print "[+] WorkTime: "+totWorkTime(currUser) + currMonth+"\n"
+        usersFile.close()
+
+    elif username == "presence":
+        # Print users list ordered by most active first.
+        # TODO: To be implemented.
+        pass
+
+    else:
+        username = checkMember(username)
+        print "[+]     Name: "+nameExtr(username)
+        print "[+] WorkTime: "+totWorkTime(username) + currMonth
+
+
 def main(args):
     if len(args) < 2:
         print "usage: "+EXECNAME+" <command> <arguments>"
@@ -315,6 +364,14 @@ def main(args):
             sys.exit()
         else:
             show(args[2])
+
+    elif command == "stats":
+        if len(args) != 3:
+            print "usage: "+EXECNAME+" stats <username>"
+            sys.exit()
+        else:
+            stats(args[2])
+
     else:
         print "error: Invalid command detected -> " + args[1]
         print HOSTNAME + ": Try with \""+EXECNAME+" help\""

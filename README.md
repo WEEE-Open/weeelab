@@ -1,6 +1,6 @@
 # weeelab
 [![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-![Version](https://img.shields.io/badge/version-1.3.5-blue.svg)
+![Version](https://img.shields.io/badge/version-1.3.6-blue.svg)
 
 Python script for garbaging paper sign sheet.
 
@@ -13,6 +13,7 @@ Available options:
   `login`  : Sign in to the lab.  
   `logout` : Sign out from the lab.  
   `show`   : Obtain status informations.  
+  `stats`  : Compute stats for a user or for all users.  
   
   Available infos:  
       `log` : Show log file.  
@@ -28,5 +29,6 @@ with nicknames as well.
 
 
 ## ToDo
-- [ ] Implement a function to compute stats for a user and for all users and save these stats
-to an external file or print them to screen.
+- [x] Implement a function to compute stats for a user and for all users.
+- [ ] Make the stats function less stupid.
+- [ ] Implement a function `presence` to print a list of users ordered by `most active first`.
