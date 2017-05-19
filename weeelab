@@ -47,10 +47,10 @@ def help(forWhat):
         sys.exit()
 
     elif forWhat == "show":
-            print "usage: "+EXECNAME+" show <option>"
-            print "  available options:"
-            print "      log : Print log file to stdout."
-            print "    inlab : View a list of students in lab now."
+        print "usage: "+EXECNAME+" show <option>"
+        print "  available options:"
+        print "      log : Print log file to stdout."
+        print "    inlab : View a list of students in lab now."
         sys.exit()
 
     else:
