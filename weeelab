@@ -22,7 +22,7 @@ import os
 import sys
 from datetime import datetime
 
-VERSION = "1.3.6"
+VERSION = "1.4"
 EXECNAME = "weeelab"
 HOSTNAME = "schifomacchina"
 HOSTUSER = "weeeopen"
@@ -53,10 +53,13 @@ def help(forWhat):
         print "    inlab : View a list of students in lab now."
         sys.exit()
 
-    elif forWhat == "stats":
-        print "usage: "+EXECNAME+" stats <username>"
-        print HOSTNAME+": If you wish to view stats for everybody,"
-        print "                use \""+EXECNAME+" stats everybody\""
+    elif forWhat == "stat":
+        print "usage: "+EXECNAME+" stat <username>"
+        print HOSTNAME+": If you want to view stats for everybody,"
+        print "                use \""+EXECNAME+" stat all\""
+
+    elif forWhat == "top":
+        print "usage: "+EXECNAME+" top <list_length>"
 
     else:
         print "WEEELAB v"+VERSION+" - Log management module for garbaging paper sign sheet."
@@ -69,7 +72,8 @@ def help(forWhat):
         print "    login  <username> : Sign access to the lab."
         print "    logout <username> : Sign quit from the lab."
         print "    show   <option>   : Retrieve informations."
-        print "    stats  <username> : Compute stats for a user or for all users."
+        print "    stat   <username> : Compute stats for a user or for all users."
+        print "    top <list_length> : Show a list of top <list_length> members."
         sys.exit()
 
 
@@ -285,6 +289,7 @@ def show(option):
         print "error: option "+option+" is not defined."
 
 
+# Returns total work time in minutes
 def totWorkTime(username):
     checkLogFile()
     timeSpent = 0
@@ -293,39 +298,60 @@ def totWorkTime(username):
         if (username in line) and not ("INLAB" in line):
             timeSpent += ((int(line[39:41])*60) + int(line[42:44]))
     logFile.close()
-    return str(timeSpent / 60)+"h " + str(timeSpent % 60)+"m"
+    return timeSpent
 
 
-def stats(username):
+# Convert minutes in a formatted string
+def timeConv(minutes):
+    return str(minutes / 60)+"h " + str(minutes % 60)+"m"
+
+
+def stat(username):
     print HOSTNAME+": Computing stats...\n"
     currMonth = datetime.now().strftime(" [%B %Y]")
 
     # Compute stats for all users (Extremely stupid algorithm, but works fine)
-    # TODO: Improve this algorithm, maybe by parsing the log file once.
-    #       Open log file and users file, load all usernames in a tuple
-    #       [ str(username), int(workTime) ]. Close users file and read log file
-    #       line per line summing the workTime of each user found in log,
-    #       and continue reading the log file till its end, saving all to the tuple.
-    #       At the end, close the log file and print stats reading data from the tuple.
-    if username == "everybody":
-        checkLogFile()
+    if username == "all":
         checkUsersFile()
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
             currUser = line.split(" ")[0]
             print "[+]     Name: "+nameExtr(currUser)
-            print "[+] WorkTime: "+totWorkTime(currUser) + currMonth+"\n"
+            print "[+] WorkTime: "+timeConv(totWorkTime(currUser)) + currMonth+"\n"
         usersFile.close()
-
-    elif username == "presence":
-        # Print users list ordered by most active first.
-        # TODO: To be implemented.
-        pass
 
     else:
         username = checkMember(username)
         print "[+]     Name: "+nameExtr(username)
-        print "[+] WorkTime: "+totWorkTime(username) + currMonth
+        print "[+] WorkTime: "+timeConv(totWorkTime(username)) + currMonth
+
+
+# Print users list ordered by most active first.
+def top(length):
+    checkUsersFile()
+    usersList = [(int, str)]
+    usersFile = open(USERS_PATH, "r")
+
+    # Loading usernames from file
+    for line in usersFile:
+        usersList.append((0, line.split(" ")[0].replace("\n","")))
+    usersFile.close()
+    usersList.remove((int, str))
+
+    # Computing total work time for each member
+    for i in xrange(0,len(usersList)):
+        user = usersList[i]
+        user = (totWorkTime(user[1]), ) + user[1:]
+        usersList[i] = user
+    usersList.sort(reverse=True)
+
+    print HOSTNAME+": Hall of Fame\n"
+    count = 1
+    for i in xrange(0, length):
+        if len(usersList) <= i:
+            break
+        print "["+str(count).zfill(2)+"] "+nameExtr(usersList[i][1])
+        count += 1
 
 
 def main(args):
@@ -365,12 +391,21 @@ def main(args):
         else:
             show(args[2])
 
-    elif command == "stats":
+    elif command == "stat":
         if len(args) != 3:
-            print "usage: "+EXECNAME+" stats <username>"
+            print "usage: "+EXECNAME+" stat <username>"
             sys.exit()
         else:
-            stats(args[2])
+            stat(args[2])
+
+    elif command == "top":
+        if len(args) == 3:
+            if args[2].isdigit is False:
+                print "usage: "+EXECNAME+" top <list_length>"
+            else:
+                top(int(args[2]))
+        else:
+            top(10)
 
     else:
         print "error: Invalid command detected -> " + args[1]
