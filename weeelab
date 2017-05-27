@@ -234,7 +234,7 @@ def workTime(timein, timeout):
     minutes = (lo - li) % 60
     return str(hours).zfill(2)+":"+str(minutes).zfill(2)
 
-def writeLogout(username, currTime):
+def writeLogout(username, currTime, workdone):
     checkLogFile()
 
     found = False
@@ -249,10 +249,7 @@ def writeLogout(username, currTime):
             line = line.replace("----------------",currTime)
             line = line.replace("INLAB",workTime(loginTime,logouTime))
             line = line.replace("\n","")
-            workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
-            while len(workdone) > 128:
-                print HOSTNAME+": I didn't ask you the story of your life!"
-                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+            #
             line = line + " :: " + workdone + "\n"
         logList.append(line)  # Store everything in the list
     logFile.close()
@@ -272,6 +269,7 @@ def writeLogout(username, currTime):
 def logout(username):
     checkLogFile()
     username = checkMember(username)
+#   passing it by value is better
     currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     found = False
 
@@ -319,13 +317,18 @@ def manualLogout():
 
     currTime = date + " " + hour
 
+    workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
+    while len(workdone) > 128:
+        print HOSTNAME+": I didn't ask you the story of your life!"
+        workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+
     print "ADMIN--> you will update the log file with "
     print "            " + username + " " + currTime
     answer = raw_input("ADMIN--> are you sure? (y/n)")
     if answer != "y":
         secureExit()
 
-    writeLogout(username,currTime)
+    writeLogout(username,currTime,workdone)
 
 
 def show(option):
@@ -468,7 +471,13 @@ def main(args):
             print "usage: "+EXECNAME+" logout <username>"
             secureExit()
         else:
-            logout(args[2])
+            username = checkMember(args[2])
+            currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
+            workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
+            while len(workdone) > 128:
+                print HOSTNAME+": I didn't ask you the story of your life!"
+                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+            writeLogout(username,currTime,workdone)
 
     elif command == "show":
         if len(args) != 3:
