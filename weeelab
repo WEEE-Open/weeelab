@@ -20,16 +20,23 @@ Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 
 import os
 import sys
+from socket import gethostname
+import getpass
 from datetime import datetime
 
 VERSION = "1.4"
 EXECNAME = "weeelab"
-HOSTNAME = "schifomacchina"
-HOSTUSER = "weeeopen"
+#HOSTNAME = "schifomacchina"
+HOSTNAME = gethostname()
+#HOSTUSER = "weeeopen"
+HOSTUSER = getpass.getuser()
 LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
 USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
 BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
 
+if HOSTUSER == "root":
+	print "Error: can't execute " + EXECNAME + " as root."
+	sys.exit(42)
 
 def help(forWhat):
     if forWhat == "login":
@@ -315,7 +322,8 @@ def stat(username):
         checkUsersFile()
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
-            currUser = line.split(" ")[0]
+	    # for some reasons line.split(" ") gave problems, so it's best to use line.split()
+            currUser = line.split()[0]
             print "[+]     Name: "+nameExtr(currUser)
             print "[+] WorkTime: "+timeConv(totWorkTime(currUser)) + currMonth+"\n"
         usersFile.close()
