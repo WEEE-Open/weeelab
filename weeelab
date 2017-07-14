@@ -21,7 +21,7 @@ Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 import os
 import sys
 from socket import gethostname
-import getpass
+import pwd
 from datetime import datetime
 
 COLOR_RED   = "\033[1;31m"
@@ -34,14 +34,21 @@ EXECNAME = "weeelab"
 #HOSTNAME = "schifomacchina"
 HOSTNAME = gethostname()
 #HOSTUSER = "weeeopen"
-HOSTUSER = getpass.getuser()
+UID = os.getuid()
+HOSTUSER = pwd.getpwuid(UID).pw_name
 LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
 USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
 BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
 
-if HOSTUSER == "root":
+#terminate the program being sure about undoing some changes like cli color
+def secureExit(RETURN_VALUE=0):
+    sys.stdout.write(COLOR_NATIVE)
+    sys.exit()
+
+# root execution check
+if UID == 0:
 	print "Error: can't execute " + EXECNAME + " as root."
-	sys.exit(42)
+	secureExit(42)
 
 def help(forWhat):
     if forWhat == "login":
@@ -87,11 +94,6 @@ def help(forWhat):
         print "    stat   <username> : Compute stats for a user or for all users."
         print "    top <list_length> : Show a list of top <list_length> members."
         secureExit()
-
-#terminate the program being sure about undoing some changes like cli color
-def secureExit():
-    sys.stdout.write(COLOR_NATIVE)
-    sys.exit()
 
 # Check if log file exists.
 def checkLogFile():
