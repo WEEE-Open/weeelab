@@ -1,5 +1,6 @@
 #!/usr/bin/python2.7
 
+
 '''
 WEEELAB - Log management module for garbaging paper sign sheet.
 Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
@@ -40,8 +41,7 @@ LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
 USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
 BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
 
-# Disable owncloud uploads debugging session
-# End user purpose: must be set to False 
+# Disable owncloud uploads during debug sessions
 debuggingState = False
 #terminate the program being sure about undoing some changes like cli color
 def secureExit(RETURN_VALUE=0):
@@ -197,9 +197,6 @@ def isEmpty(inputFile):
 
 
 def createBackupIfNecessary():
-    # JustMe11
-    # qui esegue tutto sulla prima riga (lastLine)
-    # devo fargli leggere l'ultima riga ed eseguire tutto sull'ultima riga
     logFile = open(LOG_PATH, "r")
     if isEmpty(logFile) is False:
         lastLine = str(logFile.read())[4:11]
@@ -233,7 +230,6 @@ def login(username):
     if isLoggedIn(username):
         print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
     else:
-        # JustMe11
         logFile = open(LOG_PATH, "a")
         logFile.write(loginString)
         logFile.close
