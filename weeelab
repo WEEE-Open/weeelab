@@ -1,5 +1,6 @@
 #!/usr/bin/python2.7
 
+
 '''
 WEEELAB - Log management module for garbaging paper sign sheet.
 Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
@@ -40,6 +41,8 @@ LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
 USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
 BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
 
+# Disable owncloud uploads during debug sessions
+debuggingState = False
 #terminate the program being sure about undoing some changes like cli color
 def secureExit(RETURN_VALUE=0):
     sys.stdout.write(COLOR_NATIVE)
@@ -47,8 +50,8 @@ def secureExit(RETURN_VALUE=0):
 
 # root execution check
 if UID == 0:
-	print "Error: can't execute " + EXECNAME + " as root."
-	secureExit(42)
+    print "Error: can't execute " + EXECNAME + " as root."
+    secureExit(42)
 
 def help(forWhat):
     if forWhat == "login":
@@ -152,8 +155,18 @@ def checkMember(username):
         print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
         secureExit()
     return username
-
-
+#Return last line of log file
+def getLastLine():
+    logFile = open(LOG_PATH,"r")
+    for line in logFile:
+        logFile.seek(0,2)
+        logFileSize = logFile.tell()
+        logFile.seek(max(logFileSize-1024,0),0)
+        logFileBuff = logFile.readlines()
+    logFile.close()
+    lastLine = logFileBuff[-1:]
+    return lastLine
+        
 # Check if user is already logged in.
 def isLoggedIn(username):
     username = checkMember(username)
@@ -198,8 +211,9 @@ def createBackupIfNecessary():
             print HOSTNAME + ": Backing up log file... ",
             newPath = LOG_PATH[:len(LOG_PATH)-4] + str(lastYear) + str(lastMonth).zfill(2)+".dat"
             os.rename(LOG_PATH, newPath)
-            # Send to ownCloud folder
-            os.system("cp "+newPath+" "+BACKUP_PATH+"log"+str(lastYear)+str(lastMonth).zfill(2)+".txt")
+            if not debuggingState:
+                # Send to ownCloud folder
+                os.system("cp "+newPath+" "+BACKUP_PATH+"log"+str(lastYear)+str(lastMonth).zfill(2)+".txt")
             print "Done!"
             logFile = open(LOG_PATH, "w")
             logFile.close()
@@ -216,23 +230,13 @@ def login(username):
     if isLoggedIn(username):
         print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
     else:
-        logList = []
-        logList.append(loginString)
-
-        logFile = open(LOG_PATH, "r")
-        for line in logFile:
-            logList.append(line)
-        logFile.close()
-
-        logFile = open(LOG_PATH, "w")
-        for line in logList:
-            logFile.write(line)
-        logFile.close()
-        # Send to ownCloud folder
-        os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
+        logFile = open(LOG_PATH, "a")
+        logFile.write(loginString)
+        logFile.close
+        if not debuggingState: 
+            # Send to ownCloud folder
+            os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
         print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
-
-
 # Returns the time spent in lab formatted as HH:MM
 def workTime(timein, timeout):
     li = (int(timein[:2]) * 60) + int(timein[3:5])
@@ -248,6 +252,7 @@ def writeLogout(username, currTime, workdone):
 
     logList = []
     logFile = open(LOG_PATH, "r")
+    # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
     for line in logFile:
         if ("INLAB" in line) and (username in line):
             found = True
@@ -256,7 +261,7 @@ def writeLogout(username, currTime, workdone):
             line = line.replace("----------------",currTime)
             line = line.replace("INLAB",workTime(loginTime,logouTime))
             line = line.replace("\n","")
-            #
+            
             line = line + " :: " + workdone + "\n"
         logList.append(line)  # Store everything in the list
     logFile.close()
@@ -267,8 +272,9 @@ def writeLogout(username, currTime, workdone):
         for line in logList:
             logFile.write(line)
         logFile.close()
-        # Send to ownCloud folder
-        os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
+        if not debuggingState:
+            # Send to ownCloud folder
+            os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
         print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
     else:
         print HOSTNAME + ": " + nameExtr(username) + " is not in lab!"
@@ -279,36 +285,11 @@ def logout(username):
 #   passing it by value is better
     currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
     found = False
-
-    logList = []
-    logFile = open(LOG_PATH, "r")
-    for line in logFile:
-        if ("INLAB" in line) and (username in line):
-            found = True
-            loginTime = line[12:17]
-            logouTime = currTime[11:17]
-            line = line.replace("----------------",currTime)
-            line = line.replace("INLAB",workTime(loginTime,logouTime))
-            line = line.replace("\n","")
-            workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
-            while len(workdone) > 128:
-                print HOSTNAME+": I didn't ask you the story of your life!"
-                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
-            line = line + " :: " + workdone + "\n"
-        logList.append(line)  # Store everything in the list
-    logFile.close()
-
-    if found:
-        # Writing everything to log file
-        logFile = open(LOG_PATH, "w")
-        for line in logList:
-            logFile.write(line)
-        logFile.close()
-        # Send to ownCloud folder
-        os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
-        print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
-    else:
-        print HOSTNAME + ": " + nameExtr(username) + " is not in lab!"
+    workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
+    while len(workdone) > 128:
+        print HOSTNAME+": I didn't ask you the story of your life!"
+        workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+    writeLogout(username,currTime,workdone)
 
 #logout by passing manually date and time
 def manualLogout():
@@ -414,7 +395,7 @@ def stat(username):
         checkUsersFile()
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
-	    # for some reasons line.split(" ") gave problems, so it's best to use line.split()
+        # for some reasons line.split(" ") gave problems, so it's best to use line.split()
             currUser = line.split()[0]
             print "[+]     Name: "+nameExtr(currUser)
             print "[+] WorkTime: "+timeConv(totWorkTime(currUser)) + currMonth+"\n"
