@@ -29,7 +29,7 @@ COLOR_STANDARD = "\033[;7m"
 COLOR_NATIVE = "\033[m"
 
 VERSION = "1.4"
-EXECNAME = "weeelab"
+EXECNAME = __file__.split('/')[-1]
 
 #HOSTNAME = "schifomacchina"
 HOSTNAME = gethostname()
