@@ -46,7 +46,7 @@ debuggingState = False
 #terminate the program being sure about undoing some changes like cli color
 def secureExit(RETURN_VALUE=0):
     sys.stdout.write(COLOR_NATIVE)
-    sys.exit()
+    sys.exit(RETURN_VALUE)
 
 # root execution check
 if UID == 0:
@@ -102,14 +102,14 @@ def help(forWhat):
 def checkLogFile():
     if os.path.isfile(LOG_PATH) is False:
         print "error: Log file not found."
-        secureExit()
+        secureExit(1)
 
 
 # Check if users list file exists.
 def checkUsersFile():
     if os.path.isfile(USERS_PATH) is False:
         print "error: Users list not found."
-        secureExit()
+        secureExit(2)
 
 #check if the passed date is in the right format
 def checkDate(input):
@@ -124,14 +124,14 @@ def checkDate(input):
 
     if len(date[0]) != 2 or len(date[1]) != 2 or len(date[2]) != 4:
         print "date format error"
-        secureExit()
+        secureExit(2)
     return input
 
 def checkHour(input):
     hour = input.split(":")
     if len(hour) != 2:
         print "wrong hour format"
-        secureExit()
+        secureExit(2)
     return input
 
 # Check if an username exists in users list file.
@@ -153,7 +153,7 @@ def checkMember(username):
     if not found:
         print "error: Username not recognized."
         print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
-        secureExit()
+        secureExit(2)
     return username
 #Return last line of log file
 def getLastLine():
