@@ -232,7 +232,7 @@ def login(username):
     else:
         logFile = open(LOG_PATH, "a")
         logFile.write(loginString)
-        logFile.close
+        logFile.close()
         if not debuggingState: 
             # Send to ownCloud folder
             os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
