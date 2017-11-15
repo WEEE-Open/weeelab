@@ -7,12 +7,13 @@ Python script for garbaging paper sign sheet.
 The goal of this script is to move to the trash can the paper sign sheet.
 
 ## INSTALL
-Open a terminal and type these following commands:  
-`git clone https://github.com/weee-open/weeelab`  
-`cd weeelab`  
-`sudo cp weeelab /bin/weeelab`  
-`cd ..`  
-`rm -fr weeelab`  
+Open a terminal and type these following commands:
+
+    git clone https://github.com/weee-open/weeelab
+    cd weeelab
+    sudo cp weeelab /bin/weeelab
+    cd ..
+    rm -fr weeelab
 
 ## COMMAND SYNTAX
 `weeelab [OPTION] [USER_NAME]`
@@ -40,4 +41,5 @@ with nicknames as well.
 - [x] Implement a function to compute stats for a user and for all users.
 - [x] Implement a function `top` to print a list of users ordered by `most active first`.
 - [ ] Improve some algorithms (Long Term Project)
+- [ ] Complete rewrite (integrate with bot)
 
