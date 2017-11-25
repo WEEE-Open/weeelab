@@ -24,6 +24,7 @@ import sys
 from socket import gethostname
 import pwd
 from datetime import datetime
+from datetime import timedelta
 
 COLOR_RED   = "\033[1;31m"
 COLOR_STANDARD = "\033[;7m"
@@ -224,8 +225,8 @@ def login(username):
     checkLogFile()
     createBackupIfNecessary()
     username = checkMember(username)
-    currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
-    loginString = "["+currTime+"] "+"[----------------] [INLAB] "+"<"+username+">"+"\n"
+    (currData, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
+    loginString = currData + " - " + currTime + " - INLAB - " + username + " - "+"\n"
 
     if isLoggedIn(username):
         print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
@@ -239,10 +240,13 @@ def login(username):
         print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
 # Returns the time spent in lab formatted as HH:MM
 def workTime(timein, timeout):
-    li = (int(timein[:2]) * 60) + int(timein[3:5])
-    lo = (int(timeout[:2]) * 60) + int(timeout[3:5])
-    hours = (lo - li) / 60
-    minutes = (lo - li) % 60
+    (hours_in, minutes_in) = timein.split(':')
+    (hours_out, minutes_out) = timeout.split(':')
+    li = timedelta(hours=int(hours_in), minutes=int(minutes_in))
+    lo = timedelta(hours=int(hours_out), minutes=int(minutes_out))
+    seconds = (lo-li).total_seconds()
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
     return str(hours).zfill(2)+":"+str(minutes).zfill(2)
 
 def writeLogout(username, currTime, workdone):
@@ -256,13 +260,11 @@ def writeLogout(username, currTime, workdone):
     for line in logFile:
         if ("INLAB" in line) and (username in line):
             found = True
-            loginTime = line[12:17]
-            logouTime = currTime[11:17]
-            line = line.replace("----------------",currTime)
+            loginTime = line.split('-')[1]
+            logouTime = currTime
             line = line.replace("INLAB",workTime(loginTime,logouTime))
             line = line.replace("\n","")
-            
-            line = line + " :: " + workdone + "\n"
+            line = line + workdone + "\n"
         logList.append(line)  # Store everything in the list
     logFile.close()
 
@@ -283,7 +285,7 @@ def logout(username):
     checkLogFile()
     username = checkMember(username)
 #   passing it by value is better
-    currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
+    (currDate, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
     found = False
     workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
     while len(workdone) > 128:
@@ -303,7 +305,7 @@ def manualLogout():
     tmpH = raw_input("ADMIN--> insert time (hh:mm): ")
     hour = checkHour(tmpH)
 
-    currTime = date + " " + hour
+    currTime = hour
 
     workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
     while len(workdone) > 128:
@@ -461,7 +463,7 @@ def main(args):
             secureExit()
         else:
             username = checkMember(args[2])
-            currTime = datetime.now().strftime("%d/%m/%Y %H:%M")
+            (currDate, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
             workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
             while len(workdone) > 128:
                 print HOSTNAME+": I didn't ask you the story of your life!"
