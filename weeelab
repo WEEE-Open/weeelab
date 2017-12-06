@@ -3,7 +3,6 @@
 
 """
 WEEELAB - Log management module for garbaging paper sign sheet.
-Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,6 +24,8 @@ from datetime import timedelta
 import sys
 
 __version__ = "2.1"
+__author__ = "Stefano Enrico Mendola (aka Hyd3L)"
+__maintainer__ = "WeeeOpen team"
 
 EXECNAME = os.path.basename(__file__)
 
@@ -50,6 +51,28 @@ elif sys.platform == 'win32':  # only for tests
 else:
     raise EnvironmentError('OS not supported')
 
+
+class LogRow:
+    sep = ' - '
+    mask_time = '%H:%M'
+    mask_datetime = '%Y-%m-%d %H:%M'
+
+    def __init__(self, row):
+        self.datetime = datetime.strptime(row.split(self.sep)[0].strip(),
+                                          self.mask_datetime)
+        td = row.split(self.sep)[1].strip()
+        self.time = timedelta(hours=int(td[:2]), minutes=int(td[3:]))
+        self.user = row.split(self.sep)[2].strip()
+        self.info = self.sep.join(row.split(self.sep)[3:]).strip()
+
+    def __repr__(self):
+        seconds = self.time.total_seconds()
+        hh = str(int(seconds // 3600))
+        mm = str(int((seconds % 3600) // 60))
+        return self.sep.join((self.datetime.strftime(self.mask_datetime),
+                              (hh + ':' + mm), self.user, self.info))
+
+
 COLOR_RED = "\033[1;31m"
 COLOR_STANDARD = "\033[;7m"
 COLOR_NATIVE = "\033[m"
@@ -64,34 +87,34 @@ def secureExit(RETURN_VALUE=0):
     sys.exit(RETURN_VALUE)
 
 
-def help(forWhat):
-    if forWhat == "login":
+def help(cmd=''):
+    if cmd == "login":
         print("usage: " + EXECNAME + " login <username>")
         print(HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
         secureExit()
 
-    elif forWhat == "logout":
+    elif cmd == "logout":
         print("usage: " + EXECNAME + " logout <username>")
         print(HOSTNAME + ": Username format is 'first.last'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
         secureExit()
 
-    elif forWhat == "show":
+    elif cmd == "show":
         print("usage: " + EXECNAME + " show <option>")
         print("  available options:")
         print("      log : Print log file to stdout.")
         print("    inlab : View a list of students in lab now.")
         secureExit()
 
-    elif forWhat == "stat":
+    elif cmd == "stat":
         print("usage: " + EXECNAME + " stat <username>")
         print(HOSTNAME + ": If you want to view stats for everybody,")
         print("                use \"" + EXECNAME + " stat all\"")
 
-    elif forWhat == "top":
+    elif cmd == "top":
         print("usage: " + EXECNAME + " top <list_length>")
 
     else:
@@ -480,7 +503,7 @@ def main(args):
     # Add commands here
     if command == "help":
         if len(args) < 3:
-            help("default")
+            help()
         elif len(args) >= 3:
             help(args[2])
 
@@ -498,7 +521,7 @@ def main(args):
         else:
             username = checkMember(args[2])
             (currDate, currTime) = datetime.now().strftime(
-                "%d/%m/%Y %H:%M").split()
+                LogRow.mask_datetime).split()
             workdone = input(HOSTNAME + ": What have you done?\n:: ")
             while len(workdone) > 128:
                 print(HOSTNAME + ": I didn't ask you the story of your life!")
