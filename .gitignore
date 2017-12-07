@@ -2,3 +2,5 @@
 /files/
 # script returning 0 or 2 as exit code to test log{in,out}.sh
 test.php
+# PyCharm
+.idea
