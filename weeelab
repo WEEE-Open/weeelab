@@ -27,8 +27,9 @@ __version__ = "2.1"
 __author__ = "Stefano Enrico Mendola (aka Hyd3L)"
 __maintainer__ = "WeeeOpen team"
 
-EXECNAME = os.path.basename(__file__)
+EXECNAME = os.path.basename(__file__)  # name of this file
 
+# multi platform support ######################################################
 if sys.platform == 'linux':
     from socket import gethostname
     import pwd
@@ -42,7 +43,6 @@ if sys.platform == 'linux':
     USERS_PATH = "/home/{}/.local/share/{}/users.dat".format(HOSTUSER,
                                                              HOSTNAME)
     BACKUP_PATH = "/home/{}/ownCloud/weeeopen/{}/".format(HOSTUSER, HOSTNAME)
-
 elif sys.platform == 'win32':  # only for tests
     HOSTNAME = "testmachine"
     HOSTUSER = "developer"
@@ -113,9 +113,9 @@ debuggingState = False
 
 
 # terminate the program being sure about undoing some changes like cli color
-def secureExit(RETURN_VALUE=0):
+def secure_exit(value=0):
     sys.stdout.write(COLOR_NATIVE)
-    sys.exit(RETURN_VALUE)
+    sys.exit(value)
 
 
 def help(cmd=''):
@@ -124,21 +124,21 @@ def help(cmd=''):
         print(HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
-        secureExit()
+        secure_exit()
 
     elif cmd == "logout":
         print("usage: " + EXECNAME + " logout <username>")
         print(HOSTNAME + ": Username format is 'first.last'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
-        secureExit()
+        secure_exit()
 
     elif cmd == "show":
         print("usage: " + EXECNAME + " show <option>")
         print("  available options:")
         print("      log : Print log file to stdout.")
         print("    inlab : View a list of students in lab now.")
-        secureExit()
+        secure_exit()
 
     elif cmd == "stat":
         print("usage: " + EXECNAME + " stat <username>")
@@ -164,21 +164,21 @@ def help(cmd=''):
             "    stat   <username> : Compute stats for a user or for all users.")
         print(
             "    top <list_length> : Show a list of top <list_length> members.")
-        secureExit()
+        secure_exit()
 
 
 # Check if log file exists.
 def checkLogFile():
     if not os.path.isfile(LOG_PATH):
         with open(LOG_PATH, 'x'):
-            pass
+            print(HOSTNAME + ": New log file was created.")
 
 
 # Check if users list file exists.
 def checkUsersFile():
     if not os.path.isfile(USERS_PATH):
         print("error: Users list not found.")
-        secureExit(2)
+        secure_exit(2)
 
 
 # check if the passed date is in the right format
@@ -194,7 +194,7 @@ def checkDate(input):
 
     if len(date[0]) != 2 or len(date[1]) != 2 or len(date[2]) != 4:
         print("date format error")
-        secureExit(2)
+        secure_exit(2)
     return input
 
 
@@ -202,7 +202,7 @@ def checkHour(input):
     hour = input.split(":")
     if len(hour) != 2:
         print("wrong hour format")
-        secureExit(2)
+        secure_exit(2)
     return input
 
 
@@ -225,7 +225,7 @@ def checkMember(username):
     if not found:
         print("error: Username not recognized.")
         print(HOSTNAME + ": Maybe you misspelled it or you're an intruder.")
-        secureExit(2)
+        secure_exit(2)
     return username
 
 
@@ -257,36 +257,29 @@ def isEmpty(inputFile):
 
 
 def createBackupIfNecessary():
-    logFile = open(LOG_PATH, 'r')
-    if not isEmpty(logFile):
-        lastLine = str(logFile.read())[4:11]
-        logFile.close()
+    with open(LOG_PATH, 'r') as logFile:
+        last_date = LogRow(logFile.readline()).time_in
 
-        currMonth = int(datetime.now().strftime("%m"))
-        currYear = int(datetime.now().strftime("%Y"))
-        lastMonth = int(
-            datetime.now().strptime(lastLine, "%m/%Y").strftime("%m"))
-        lastYear = int(
-            datetime.now().strptime(lastLine, "%m/%Y").strftime("%Y"))
-
-        if (currMonth > lastMonth) or (currYear > lastYear):
-            print(HOSTNAME + ": Backing up log file... ")
-            newPath = LOG_PATH[:len(LOG_PATH) - 4] + str(lastYear) + str(
-                lastMonth).zfill(2) + ".dat"
-            os.rename(LOG_PATH, newPath)
-            if not debuggingState:
-                # Send to ownCloud folder
-                os.system("cp " + newPath + " " + BACKUP_PATH + "log" + str(
-                    lastYear) + str(lastMonth).zfill(2) + ".txt")
-            print("Done!")
-            logFile = open(LOG_PATH, "w")
-            logFile.close()
-            print(HOSTNAME + ": New log file was created.")
+    last_month, last_year = last_date.month, last_date.year
+    curr_date = datetime.now()
+    curr_month, curr_year = curr_date.month, curr_date.year
+    if (curr_month > last_month) or (curr_year > last_year):
+        print(HOSTNAME + ": Backing up log file... ")
+        file_ext = os.path.splitext(LOG_PATH)[1]
+        new_path = LOG_PATH[:-len(file_ext)] + last_date.strftime(
+            '%Y-%m') + file_ext
+        os.rename(LOG_PATH, new_path)
+        if not debuggingState:
+            # Send to ownCloud folder
+            os.system("cp " + new_path + " " + BACKUP_PATH +
+                      "log" + last_date.strftime('%Y-%m') + ".txt")
+        print("Done!")
+        checkLogFile()
 
 
 def login(username):
     checkLogFile()
-    # createBackupIfNecessary()
+    createBackupIfNecessary()
     username = checkMember(username)
     lg = LogRow()
     lg.user = username
@@ -347,10 +340,12 @@ def logout(username):
             workdone = input(HOSTNAME + ": What have you done?\n:: ")
             while len(workdone) > 128:
                 print(HOSTNAME + ": I didn't ask you the story of your life!")
-                workdone = input(HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
+                workdone = input(
+                    HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
             writeLogout(username, workdone)
         except KeyboardInterrupt:
-            print(HOSTNAME + ": Logout fail! Sorry " + nameExtr(username) + "!")
+            print(
+                HOSTNAME + ": Logout fail! Sorry " + nameExtr(username) + "!")
     else:
         print(HOSTNAME + ": " + nameExtr(username) + " is not in lab!")
 
@@ -378,7 +373,7 @@ def manualLogout():
     print("            " + username + " " + currTime)
     answer = input("ADMIN--> are you sure? (y/n)")
     if answer != "y":
-        secureExit()
+        secure_exit()
 
     writeLogout(username, workdone)
 
@@ -489,7 +484,7 @@ def top(length):
 def main(args):
     if len(args) < 2:
         print("usage: " + EXECNAME + " <command> <arguments>")
-        secureExit()
+        secure_exit()
     command = args[1]
 
     # Add commands here
@@ -502,14 +497,14 @@ def main(args):
     elif command == "login":
         if len(args) != 3:
             print("usage: " + EXECNAME + " login <username>")
-            secureExit()
+            secure_exit()
         else:
             login(args[2])
 
     elif command == "logout":
         if len(args) != 3:
             print("usage: " + EXECNAME + " logout <username>")
-            secureExit()
+            secure_exit()
         else:
             logout(args[2])
 
@@ -519,14 +514,14 @@ def main(args):
             print("  available options:")
             print("      log : Print log file to stdout.")
             print("    inlab : View a list of students in lab now.")
-            secureExit()
+            secure_exit()
         else:
             show(args[2])
 
     elif command == "stat":
         if len(args) != 3:
             print("usage: " + EXECNAME + " stat <username>")
-            secureExit()
+            secure_exit()
         else:
             stat(args[2])
 
@@ -545,7 +540,7 @@ def main(args):
         if len(args) != 3:
             # print("usage: "+EXECNAME+" admin <login/logout>")
             print("usage: " + EXECNAME + " admin <logout>")
-            secureExit()
+            secure_exit()
         else:
             manualLogout()
             sys.stdout.write(COLOR_NATIVE)
