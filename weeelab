@@ -1,9 +1,8 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 
 
-'''
+"""
 WEEELAB - Log management module for garbaging paper sign sheet.
-Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,133 +16,205 @@ Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
+"""
 
 import os
-import sys
-from socket import gethostname
-import pwd
 from datetime import datetime
 from datetime import timedelta
+import sys
 
-COLOR_RED   = "\033[1;31m"
+__version__ = "2.1"
+__author__ = "Stefano Enrico Mendola (aka Hyd3L)"
+__maintainer__ = "WeeeOpen team"
+
+EXECNAME = os.path.basename(__file__)
+
+if sys.platform == 'linux':
+    from socket import gethostname
+    import pwd
+
+    HOSTNAME = gethostname()  # "schifomacchina"
+    UID = os.getuid()
+    if UID == 0:  # root execution check
+        raise PermissionError("can't execute " + EXECNAME + " as root.")
+    HOSTUSER = pwd.getpwuid(UID).pw_name  # "weeeopen"
+    LOG_PATH = "/home/{}/.local/share/{}/log.dat".format(HOSTUSER, HOSTNAME)
+    USERS_PATH = "/home/{}/.local/share/{}/users.dat".format(HOSTUSER,
+                                                             HOSTNAME)
+    BACKUP_PATH = "/home/{}/ownCloud/weeeopen/{}/".format(HOSTUSER, HOSTNAME)
+
+elif sys.platform == 'win32':  # only for tests
+    HOSTNAME = "testmachine"
+    HOSTUSER = "developer"
+    LOG_PATH = os.path.dirname(os.path.realpath(__file__)) + "/log.dat"
+    USERS_PATH = os.path.dirname(os.path.realpath(__file__)) + "/users.dat"
+    BACKUP_PATH = os.path.dirname(os.path.realpath(__file__)) + "/backup/"
+else:
+    raise EnvironmentError('OS not supported')
+
+
+class LogRow:
+    sep = ' - '
+    mask_datetime = '%Y-%m-%d %H:%M'
+    presence = 'INLAB'
+
+    def __init__(self, row=''):
+        if row == '':
+            self.time_in = datetime.now()
+            self.time_work = self.presence
+            self.user = 'bug'
+            self.info = ''
+        else:
+            self.time_in = datetime.strptime(row.split(self.sep)[0].strip(),
+                                             self.mask_datetime)
+
+            td = row.split(self.sep)[1].strip()
+            if td == self.presence:
+                self.time_work = self.presence
+            else:
+                self.time_work = timedelta(hours=int(td.split(':')[0]),
+                                           minutes=int(td.split(':')[1]))
+
+            self.user = row.split(self.sep)[2].strip()
+            self.info = self.sep.join(row.split(self.sep)[3:]).strip()
+
+    def __repr__(self):
+        if self.inlab():
+            tm = self.presence
+        else:
+            seconds = self.time_work.total_seconds()
+            hh = str(int(seconds // 3600)).zfill(2)
+            mm = str(int((seconds % 3600) // 60)).zfill(2)
+            tm = hh + ':' + mm
+        return self.sep.join((self.time_in.strftime(self.mask_datetime),
+                              tm, self.user, self.info)) + '\n'
+
+    def inlab(self, user=''):
+        if user == '':
+            return self.time_work == self.presence
+        else:
+            return (self.time_work == self.presence) and (self.user == user)
+
+    def logout(self, workdone):
+        if self.inlab():
+            self.time_work = datetime.now() - self.time_in
+            self.info = workdone
+            return True
+        else:
+            return False
+
+
+COLOR_RED = "\033[1;31m"
 COLOR_STANDARD = "\033[;7m"
 COLOR_NATIVE = "\033[m"
 
-VERSION = "1.4"
-EXECNAME = __file__.split('/')[-1]
-
-#HOSTNAME = "schifomacchina"
-HOSTNAME = gethostname()
-#HOSTUSER = "weeeopen"
-UID = os.getuid()
-HOSTUSER = pwd.getpwuid(UID).pw_name
-LOG_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/log.dat"
-USERS_PATH = "/home/"+HOSTUSER+"/.local/share/"+EXECNAME+"/users.dat"
-BACKUP_PATH = "/home/"+HOSTUSER+"/ownCloud/weeeopen/"+EXECNAME.capitalize()+"/"
-
 # Disable owncloud uploads during debug sessions
 debuggingState = False
-#terminate the program being sure about undoing some changes like cli color
+
+
+# terminate the program being sure about undoing some changes like cli color
 def secureExit(RETURN_VALUE=0):
     sys.stdout.write(COLOR_NATIVE)
     sys.exit(RETURN_VALUE)
 
-# root execution check
-if UID == 0:
-    print "Error: can't execute " + EXECNAME + " as root."
-    secureExit(42)
 
-def help(forWhat):
-    if forWhat == "login":
-        print "usage: " + EXECNAME + " login <username>"
-        print HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'"
-        print "                where XXXXXX is your serial number."
-        print "                You can even use an alias if defined."
+def help(cmd=''):
+    if cmd == "login":
+        print("usage: " + EXECNAME + " login <username>")
+        print(HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'")
+        print("                where XXXXXX is your serial number.")
+        print("                You can even use an alias if defined.")
         secureExit()
 
-    elif forWhat == "logout":
-        print "usage: " + EXECNAME + " logout <username>"
-        print HOSTNAME + ": Username format is 'first.last'"
-        print "                where XXXXXX is your serial number."
-        print "                You can even use an alias if defined."
+    elif cmd == "logout":
+        print("usage: " + EXECNAME + " logout <username>")
+        print(HOSTNAME + ": Username format is 'first.last'")
+        print("                where XXXXXX is your serial number.")
+        print("                You can even use an alias if defined.")
         secureExit()
 
-    elif forWhat == "show":
-        print "usage: "+EXECNAME+" show <option>"
-        print "  available options:"
-        print "      log : Print log file to stdout."
-        print "    inlab : View a list of students in lab now."
+    elif cmd == "show":
+        print("usage: " + EXECNAME + " show <option>")
+        print("  available options:")
+        print("      log : Print log file to stdout.")
+        print("    inlab : View a list of students in lab now.")
         secureExit()
 
-    elif forWhat == "stat":
-        print "usage: "+EXECNAME+" stat <username>"
-        print HOSTNAME+": If you want to view stats for everybody,"
-        print "                use \""+EXECNAME+" stat all\""
+    elif cmd == "stat":
+        print("usage: " + EXECNAME + " stat <username>")
+        print(HOSTNAME + ": If you want to view stats for everybody,")
+        print("                use \"" + EXECNAME + " stat all\"")
 
-    elif forWhat == "top":
-        print "usage: "+EXECNAME+" top <list_length>"
+    elif cmd == "top":
+        print("usage: " + EXECNAME + " top <list_length>")
 
     else:
-        print "WEEELAB v"+VERSION+" - Log management module for garbaging paper sign sheet."
-        print "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)"
-        print "Copyright (C) 2017 WeeeOpen - Politecnico di Torino"
-        print "This program comes with ABSOLUTELY NO WARRANTY."
-        print "Since this is a free software, you are welcome"
-        print "to redistribute it under the terms of the GNU GPLv3.\n"
-        print "  Available commands:"
-        print "    login  <username> : Sign access to the lab."
-        print "    logout <username> : Sign quit from the lab."
-        print "    show   <option>   : Retrieve informations."
-        print "    stat   <username> : Compute stats for a user or for all users."
-        print "    top <list_length> : Show a list of top <list_length> members."
+        print(
+            "WEEELAB v" + __version__ + " - Log management module for garbaging paper sign sheet.")
+        print("Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)")
+        print("Copyright (C) 2017 WeeeOpen - Politecnico di Torino")
+        print("This program comes with ABSOLUTELY NO WARRANTY.")
+        print("Since this is a free software, you are welcome")
+        print("to redistribute it under the terms of the GNU GPLv3.\n")
+        print("  Available commands:")
+        print("    login  <username> : Sign access to the lab.")
+        print("    logout <username> : Sign quit from the lab.")
+        print("    show   <option>   : Retrieve informations.")
+        print(
+            "    stat   <username> : Compute stats for a user or for all users.")
+        print(
+            "    top <list_length> : Show a list of top <list_length> members.")
         secureExit()
+
 
 # Check if log file exists.
 def checkLogFile():
-    if os.path.isfile(LOG_PATH) is False:
-        print "error: Log file not found."
-        secureExit(1)
+    if not os.path.isfile(LOG_PATH):
+        with open(LOG_PATH, 'x'):
+            pass
 
 
 # Check if users list file exists.
 def checkUsersFile():
-    if os.path.isfile(USERS_PATH) is False:
-        print "error: Users list not found."
+    if not os.path.isfile(USERS_PATH):
+        print("error: Users list not found.")
         secureExit(2)
 
-#check if the passed date is in the right format
+
+# check if the passed date is in the right format
 def checkDate(input):
     date = input.split("/")
 
     '''
 # debug only
-    print str(len(date[0]))
-    print str(len(date[1]))
-    print str(len(date[2]))
+    print(str(len(date[0])))
+    print(str(len(date[1])))
+    print(str(len(date[2])))
     '''
 
     if len(date[0]) != 2 or len(date[1]) != 2 or len(date[2]) != 4:
-        print "date format error"
+        print("date format error")
         secureExit(2)
     return input
+
 
 def checkHour(input):
     hour = input.split(":")
     if len(hour) != 2:
-        print "wrong hour format"
+        print("wrong hour format")
         secureExit(2)
     return input
+
 
 # Check if an username exists in users list file.
 def checkMember(username):
     checkUsersFile()
     found = False
-    usersFile = open(USERS_PATH, "r")
+    usersFile = open(USERS_PATH, 'r')
 
     for line in usersFile:
         # Remove newline character from the line read from file
-        line = line.replace("\n","")
+        line = line.replace('\n', '')
         words = line.split()
         if username in words:
             found = True
@@ -152,29 +223,19 @@ def checkMember(username):
     usersFile.close()
 
     if not found:
-        print "error: Username not recognized."
-        print HOSTNAME + ": Maybe you misspelled it or you're an intruder."
+        print("error: Username not recognized.")
+        print(HOSTNAME + ": Maybe you misspelled it or you're an intruder.")
         secureExit(2)
     return username
-#Return last line of log file
-def getLastLine():
-    logFile = open(LOG_PATH,"r")
-    for line in logFile:
-        logFile.seek(0,2)
-        logFileSize = logFile.tell()
-        logFile.seek(max(logFileSize-1024,0),0)
-        logFileBuff = logFile.readlines()
-    logFile.close()
-    lastLine = logFileBuff[-1:]
-    return lastLine
-        
+
+
 # Check if user is already logged in.
 def isLoggedIn(username):
     username = checkMember(username)
     logged = False
-    logFile = open(LOG_PATH, "r")
+    logFile = open(LOG_PATH, 'r')
     for line in logFile:
-        if ("INLAB" in line) and (username in line):
+        if ('INLAB' in line) and (username in line):
             logged = True
             break
     logFile.close()
@@ -182,14 +243,12 @@ def isLoggedIn(username):
 
 
 def nameExtr(username):
-    firstName = username.split('.')[0].capitalize()
-    lastName = username.split('.')[1].capitalize()
-    return firstName + " " + lastName
+    return username.replace('.', ' ').title()
 
 
 # Check if inputFile is empty.
 def isEmpty(inputFile):
-    if str(inputFile.read())[:1] == "":
+    if str(inputFile.read())[:1] == '':
         inputFile.close()
         return True
     else:
@@ -198,177 +257,167 @@ def isEmpty(inputFile):
 
 
 def createBackupIfNecessary():
-    logFile = open(LOG_PATH, "r")
-    if isEmpty(logFile) is False:
+    logFile = open(LOG_PATH, 'r')
+    if not isEmpty(logFile):
         lastLine = str(logFile.read())[4:11]
         logFile.close()
 
         currMonth = int(datetime.now().strftime("%m"))
         currYear = int(datetime.now().strftime("%Y"))
-        lastMonth = int(datetime.now().strptime(lastLine,"%m/%Y").strftime("%m"))
-        lastYear = int(datetime.now().strptime(lastLine,"%m/%Y").strftime("%Y"))
+        lastMonth = int(
+            datetime.now().strptime(lastLine, "%m/%Y").strftime("%m"))
+        lastYear = int(
+            datetime.now().strptime(lastLine, "%m/%Y").strftime("%Y"))
 
         if (currMonth > lastMonth) or (currYear > lastYear):
-            print HOSTNAME + ": Backing up log file... ",
-            newPath = LOG_PATH[:len(LOG_PATH)-4] + str(lastYear) + str(lastMonth).zfill(2)+".dat"
+            print(HOSTNAME + ": Backing up log file... ")
+            newPath = LOG_PATH[:len(LOG_PATH) - 4] + str(lastYear) + str(
+                lastMonth).zfill(2) + ".dat"
             os.rename(LOG_PATH, newPath)
             if not debuggingState:
                 # Send to ownCloud folder
-                os.system("cp "+newPath+" "+BACKUP_PATH+"log"+str(lastYear)+str(lastMonth).zfill(2)+".txt")
-            print "Done!"
+                os.system("cp " + newPath + " " + BACKUP_PATH + "log" + str(
+                    lastYear) + str(lastMonth).zfill(2) + ".txt")
+            print("Done!")
             logFile = open(LOG_PATH, "w")
             logFile.close()
-            print HOSTNAME + ": New log file was created."
+            print(HOSTNAME + ": New log file was created.")
 
 
 def login(username):
     checkLogFile()
-    createBackupIfNecessary()
+    # createBackupIfNecessary()
     username = checkMember(username)
-    (currData, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
-    loginString = currData + " - " + currTime + " - INLAB - " + username + " - "+"\n"
+    lg = LogRow()
+    lg.user = username
 
     if isLoggedIn(username):
-        print HOSTNAME + ": " + nameExtr(username) + ", you're already logged in."
+        print(HOSTNAME + ": " + nameExtr(
+            username) + ", you're already logged in.")
     else:
-        logFile = open(LOG_PATH, "a")
-        logFile.write(loginString)
-        logFile.close()
-        if not debuggingState: 
-            # Send to ownCloud folder
-            os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
-        print HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!"
-# Returns the time spent in lab formatted as HH:MM
-def workTime(timein, timeout):
-    (hours_in, minutes_in) = timein.split(':')
-    (hours_out, minutes_out) = timeout.split(':')
-    li = timedelta(hours=int(hours_in), minutes=int(minutes_in))
-    lo = timedelta(hours=int(hours_out), minutes=int(minutes_out))
-    seconds = (lo-li).total_seconds()
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    return str(hours).zfill(2)+":"+str(minutes).zfill(2)
+        with open(LOG_PATH, "a") as logFile:
+            logFile.write(repr(lg))
+        if not debuggingState:  # Send to ownCloud folder
+            os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
+        print(
+            HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!")
 
-def writeLogout(username, currTime, workdone):
+
+def writeLogout(username, workdone):
     checkLogFile()
 
     found = False
-
     logList = []
-    logFile = open(LOG_PATH, "r")
-    # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
-    for line in logFile:
-        if ("INLAB" in line) and (username in line):
-            found = True
-            loginTime = line.split('-')[1]
-            logouTime = currTime
-            line = line.replace("INLAB",workTime(loginTime,logouTime))
-            line = line.replace("\n","")
-            line = line + workdone + "\n"
-        logList.append(line)  # Store everything in the list
-    logFile.close()
+    with open(LOG_PATH, 'r') as logFile:
+        # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
+        for line in logFile:
+            lr = LogRow(line)
+            if lr.inlab(username):
+                found = True
+                lr.logout(workdone)
+            logList.append(repr(lr))  # Store everything in the list
 
     if found:
         # Writing everything to log file
-        logFile = open(LOG_PATH, "w")
-        for line in logList:
-            logFile.write(line)
-        logFile.close()
+        with open(LOG_PATH, "w") as logFile:
+            for line in logList:
+                logFile.write(line)
         if not debuggingState:
             # Send to ownCloud folder
-            os.system("cp "+LOG_PATH+" "+BACKUP_PATH+"log.txt")
-        print HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!"
+            os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
+        print(
+            HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!")
     else:
-        print HOSTNAME + ": " + nameExtr(username) + " is not in lab!"
+        print(HOSTNAME + ": " + nameExtr(username) + " is not in lab!")
+
 
 def logout(username):
     checkLogFile()
     username = checkMember(username)
-#   passing it by value is better
-    (currDate, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
-    found = False
-    workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
-    while len(workdone) > 128:
-        print HOSTNAME+": I didn't ask you the story of your life!"
-        workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
-    writeLogout(username,currTime,workdone)
 
-#logout by passing manually date and time
+    found = False
+    with open(LOG_PATH, 'r') as logFile:
+        # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
+        for line in logFile:
+            lr = LogRow(line)
+            if lr.inlab(username):
+                found = True
+    if found:
+        try:
+            workdone = input(HOSTNAME + ": What have you done?\n:: ")
+            while len(workdone) > 128:
+                print(HOSTNAME + ": I didn't ask you the story of your life!")
+                workdone = input(HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
+            writeLogout(username, workdone)
+        except KeyboardInterrupt:
+            print(HOSTNAME + ": Logout fail! Sorry " + nameExtr(username) + "!")
+    else:
+        print(HOSTNAME + ": " + nameExtr(username) + " is not in lab!")
+
+
+# logout by passing manually date and time
 def manualLogout():
     checkLogFile()
-    tmpUsr = raw_input("ADMIN--> insert username: ")
+    tmpUsr = input("ADMIN--> insert username: ")
     username = checkMember(tmpUsr)
 
-    tmpDate = raw_input("ADMIN--> insert date (gg/mm/aaaa): ")
+    tmpDate = input("ADMIN--> insert date (gg/mm/aaaa): ")
     date = checkDate(tmpDate)
 
-    tmpH = raw_input("ADMIN--> insert time (hh:mm): ")
+    tmpH = input("ADMIN--> insert time (hh:mm): ")
     hour = checkHour(tmpH)
 
     currTime = hour
 
-    workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
+    workdone = input(HOSTNAME + ": What have you done?\n:: ")
     while len(workdone) > 128:
-        print HOSTNAME+": I didn't ask you the story of your life!"
-        workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
+        print(HOSTNAME + ": I didn't ask you the story of your life!")
+        workdone = input(HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
 
-    print "ADMIN--> you will update the log file with "
-    print "            " + username + " " + currTime
-    answer = raw_input("ADMIN--> are you sure? (y/n)")
+    print("ADMIN--> you will update the log file with ")
+    print("            " + username + " " + currTime)
+    answer = input("ADMIN--> are you sure? (y/n)")
     if answer != "y":
         secureExit()
 
-    writeLogout(username,currTime,workdone)
+    writeLogout(username, workdone)
 
 
 def show(option):
     checkLogFile()
 
     if option == "log":
-        print HOSTNAME + ": Reading log file...\n"
+        print(HOSTNAME + ": Reading log file...\n")
         logFile = open(LOG_PATH, "r")
         for line in logFile:
-            print line,
+            print(line)
         logFile.close()
 
     elif option == "inlab":
         count = 0
-        currDay = datetime.now().strftime("%d/%m/%Y")
-        print HOSTNAME + ": Reading log file...\n"
+        currDay = datetime.now().strftime("%Y-%m-%d")
+        print(HOSTNAME + ": Reading log file...\n")
         logFile = open(LOG_PATH, "r")
         for line in logFile:
-            if ("INLAB" in line) and (currDay in line):
+            if ('INLAB' in line) and (currDay in line):
                 count += 1
-                print "> " + nameExtr(line[47:line.rfind(">")])
+                print("> " + nameExtr(line[47:line.rfind(">")]))
         logFile.close()
 
         if count == 0:
-            print HOSTNAME + ": Nobody is in lab right now."
+            print(HOSTNAME + ": Nobody is in lab right now.")
         elif count == 1:
-            print HOSTNAME + ": There is one student in lab right now."
+            print(HOSTNAME + ": There is one student in lab right now.")
         else:
-            print HOSTNAME + ": There are {c} students in lab right now.".format(c=count)
+            print(
+                HOSTNAME + ": There are {c} students in lab right now.".format(
+                    c=count))
 
     elif option == "help":
         help("default")
 
-    # Uovo di Pasqua
-    # elif option == "beer":
-    #     print HOSTNAME + ": Sadly my constructors haven't considered to add"
-    #     print "                such component in my system, but I could hold your"
-    #     print "                beer if you want [Y/n]",
-    #     response = raw_input()
-    #     if response == "y" or response == "Y" or response == "":
-    #         os.system("eject /dev/cdrom")
-    #         print HOSTNAME + ": Alright! Lean here your beer :-)"
-    #     else:
-    #         print HOSTNAME + ": As you desire! :-)"
-    # else:
-    #     print "error: Invalid option detected."
-    #     print HOSTNAME + ": Try with 'help show'."
-
     else:
-        print "error: option "+option+" is not defined."
+        print("error: option " + option + " is not defined.")
 
 
 # Returns total work time in minutes
@@ -378,18 +427,18 @@ def totWorkTime(username):
     logFile = open(LOG_PATH, "r")
     for line in logFile:
         if (username in line) and not ("INLAB" in line):
-            timeSpent += ((int(line[39:41])*60) + int(line[42:44]))
+            timeSpent += ((int(line[39:41]) * 60) + int(line[42:44]))
     logFile.close()
     return timeSpent
 
 
 # Convert minutes in a formatted string
 def timeConv(minutes):
-    return str(minutes / 60)+"h " + str(minutes % 60)+"m"
+    return str(minutes / 60) + "h " + str(minutes % 60) + "m"
 
 
 def stat(username):
-    print HOSTNAME+": Computing stats...\n"
+    print(HOSTNAME + ": Computing stats...\n")
     currMonth = datetime.now().strftime(" [%B %Y]")
 
     # Compute stats for all users (Extremely stupid algorithm, but works fine)
@@ -397,92 +446,86 @@ def stat(username):
         checkUsersFile()
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
-        # for some reasons line.split(" ") gave problems, so it's best to use line.split()
             currUser = line.split()[0]
-            print "[+]     Name: "+nameExtr(currUser)
-            print "[+] WorkTime: "+timeConv(totWorkTime(currUser)) + currMonth+"\n"
+            print("[+]     Name: " + nameExtr(currUser))
+            print("[+] WorkTime: " + timeConv(
+                totWorkTime(currUser)) + currMonth + "\n")
         usersFile.close()
 
     else:
         username = checkMember(username)
-        print "[+]     Name: "+nameExtr(username)
-        print "[+] WorkTime: "+timeConv(totWorkTime(username)) + currMonth
+        print("[+]     Name: " + nameExtr(username))
+        print("[+] WorkTime: " + timeConv(totWorkTime(username)) + currMonth)
 
 
 # Print users list ordered by most active first.
 def top(length):
     checkUsersFile()
     usersList = [(int, str)]
-    usersFile = open(USERS_PATH, "r")
+    usersFile = open(USERS_PATH, 'r')
 
     # Loading usernames from file
     for line in usersFile:
-        usersList.append((0, line.split(" ")[0].replace("\n","")))
+        usersList.append((0, line.split()[0].replace("\n", '')))
     usersFile.close()
     usersList.remove((int, str))
 
     # Computing total work time for each member
-    for i in xrange(0,len(usersList)):
+    for i in range(0, len(usersList)):
         user = usersList[i]
-        user = (totWorkTime(user[1]), ) + user[1:]
+        user = (totWorkTime(user[1]),) + user[1:]
         usersList[i] = user
     usersList.sort(reverse=True)
 
-    print HOSTNAME+": Hall of Fame\n"
+    print(HOSTNAME + ": Hall of Fame\n")
     count = 1
-    for i in xrange(0, length):
+    for i in range(0, length):
         if len(usersList) <= i:
             break
-        print "["+str(count).zfill(2)+"] "+nameExtr(usersList[i][1])
+        print("[" + str(count).zfill(2) + "] " + nameExtr(usersList[i][1]))
         count += 1
 
 
 def main(args):
     if len(args) < 2:
-        print "usage: "+EXECNAME+" <command> <arguments>"
+        print("usage: " + EXECNAME + " <command> <arguments>")
         secureExit()
     command = args[1]
 
     # Add commands here
     if command == "help":
         if len(args) < 3:
-            help("default")
+            help()
         elif len(args) >= 3:
             help(args[2])
 
     elif command == "login":
         if len(args) != 3:
-            print "usage: "+EXECNAME+" login <username>"
+            print("usage: " + EXECNAME + " login <username>")
             secureExit()
         else:
             login(args[2])
 
     elif command == "logout":
         if len(args) != 3:
-            print "usage: "+EXECNAME+" logout <username>"
+            print("usage: " + EXECNAME + " logout <username>")
             secureExit()
         else:
-            username = checkMember(args[2])
-            (currDate, currTime) = datetime.now().strftime("%d/%m/%Y %H:%M").split()
-            workdone = raw_input(HOSTNAME+": What have you done?\n:: ")
-            while len(workdone) > 128:
-                print HOSTNAME+": I didn't ask you the story of your life!"
-                workdone = raw_input(HOSTNAME+": What have you done? [BRIEFLY]\n>> ")
-            writeLogout(username,currTime,workdone)
+            logout(args[2])
 
     elif command == "show":
         if len(args) != 3:
-            print "usage: "+EXECNAME+" show <option>"
-            print "  available options:"
-            print "      log : Print log file to stdout."
-            print "    inlab : View a list of students in lab now."
+            print("usage: " + EXECNAME + " show <option>")
+            print("  available options:")
+            print("      log : Print log file to stdout.")
+            print("    inlab : View a list of students in lab now.")
             secureExit()
         else:
             show(args[2])
 
     elif command == "stat":
         if len(args) != 3:
-            print "usage: "+EXECNAME+" stat <username>"
+            print("usage: " + EXECNAME + " stat <username>")
             secureExit()
         else:
             stat(args[2])
@@ -490,7 +533,7 @@ def main(args):
     elif command == "top":
         if len(args) == 3:
             if args[2].isdigit is False:
-                print "usage: "+EXECNAME+" top <list_length>"
+                print("usage: " + EXECNAME + " top <list_length>")
             else:
                 top(int(args[2]))
         else:
@@ -498,19 +541,18 @@ def main(args):
 
     elif command == "admin":
         sys.stdout.write(COLOR_RED)
-        print "WARNING: be sure of what you will do!"
+        print("WARNING: be sure of what you will do!")
         if len(args) != 3:
-#            print "usage: "+EXECNAME+" admin <login/logout>"
-            print "usage: "+EXECNAME+" admin <logout>"
+            # print("usage: "+EXECNAME+" admin <login/logout>")
+            print("usage: " + EXECNAME + " admin <logout>")
             secureExit()
         else:
             manualLogout()
             sys.stdout.write(COLOR_NATIVE)
 
-
     else:
-        print "error: Invalid command detected -> " + args[1]
-        print HOSTNAME + ": Try with \""+EXECNAME+" help\""
+        print("error: Invalid command detected -> " + args[1])
+        print(HOSTNAME + ": Try with \"" + EXECNAME + " help\"")
 
 
 if __name__ == '__main__':
