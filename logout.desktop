@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=LOGOUT
+Comment=Log out
+Exec=/home/weee/weeelab/logout.sh
+Icon=/home/weee/lollone.png
+Terminal=true
+Type=Application
