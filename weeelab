@@ -383,22 +383,19 @@ def show(option):
 
     if option == "log":
         print(HOSTNAME + ": Reading log file...\n")
-        logFile = open(LOG_PATH, "r")
-        for line in logFile:
-            print(line)
-        logFile.close()
+        with open(LOG_PATH, 'r') as logFile:
+            for line in logFile:
+                print(line)
 
     elif option == "inlab":
         count = 0
         currDay = datetime.now().strftime("%Y-%m-%d")
         print(HOSTNAME + ": Reading log file...\n")
-        logFile = open(LOG_PATH, "r")
-        for line in logFile:
-            if ('INLAB' in line) and (currDay in line):
-                count += 1
-                print("> " + nameExtr(line[47:line.rfind(">")]))
-        logFile.close()
-
+        with open(LOG_PATH, 'r') as logFile:
+            for line in logFile:
+                if ('INLAB' in line) and (currDay in line):
+                    count += 1
+                    print("> " + nameExtr(LogRow(line).user))
         if count == 0:
             print(HOSTNAME + ": Nobody is in lab right now.")
         elif count == 1:
@@ -409,7 +406,7 @@ def show(option):
                     c=count))
 
     elif option == "help":
-        help("default")
+        help()
 
     else:
         print("error: option " + option + " is not defined.")
