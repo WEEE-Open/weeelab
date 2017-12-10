@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-
 """
 WEEELAB - Log management module for garbaging paper sign sheet.
 
@@ -81,14 +80,12 @@ class LogRow:
         else:
             self.time_in = datetime.strptime(row.split(self.sep)[0].strip(),
                                              self.mask_datetime)
-
             td = row.split(self.sep)[1].strip()
             if td == self.presence:
                 self.time_work = self.presence
             else:
                 self.time_work = timedelta(hours=int(td.split(':')[0]),
                                            minutes=int(td.split(':')[1]))
-
             self.username = row.split(self.sep)[2].strip()
             self.workdone = self.sep.join(row.split(self.sep)[3:]).strip()
 
@@ -106,14 +103,14 @@ class LogRow:
     def inlab(self, username=''):
         """
         Return True if <username> is logged in else False
-        :param username: 'name.surname'
+        :param username: 'Name Surname'
         :return: bool
         """
-        if username == '':
-            return self.time_work == self.presence
-        else:
+        if username:
             return (self.time_work == self.presence) and (
                     self.username == username)
+        else:
+            return self.time_work == self.presence
 
     def logout(self, workdone):
         """
@@ -140,40 +137,49 @@ def secure_exit(value=0):
     sys.exit(value)
 
 
+def __p_host(string=''):
+    print(HOSTNAME + ': ' + string)
+
+
+def __p_usage(string=''):
+    print('usage: ' + EXECNAME + ' ' + string)
+
+
 def help(cmd=''):
     if cmd == "login":
-        print("usage: " + EXECNAME + " login <username>")
-        print(HOSTNAME + ": Username format is 'first.last' or 'XXXXXX'")
+        __p_usage("login <username>")
+        __p_host("Username format is 'first.last' or 'XXXXXX'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
         secure_exit()
 
     elif cmd == "logout":
-        print("usage: " + EXECNAME + " logout <username>")
-        print(HOSTNAME + ": Username format is 'first.last'")
+        __p_usage("logout <username>")
+        __p_host("Username format is 'first.last'")
         print("                where XXXXXX is your serial number.")
         print("                You can even use an alias if defined.")
         secure_exit()
 
     elif cmd == "show":
-        print("usage: " + EXECNAME + " show <option>")
+        __p_usage("show <option>")
         print("  available options:")
         print("      log : Print log file to stdout.")
         print("    inlab : View a list of students in lab now.")
         secure_exit()
 
     elif cmd == "stat":
-        print("usage: " + EXECNAME + " stat <username>")
-        print(HOSTNAME + ": If you want to view stats for everybody,")
+        __p_usage("stat <username>")
+        __p_host("If you want to view stats for everybody,")
         print("                use \"" + EXECNAME + " stat all\"")
 
     elif cmd == "top":
-        print("usage: " + EXECNAME + " top <list_length>")
+        __p_usage("top <list_length>")
 
     else:
         print(
             "WEEELAB v" + __version__ + " - Log management module for garbaging paper sign sheet.")
-        print("Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)")
+        print(
+            "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)")
         print("Copyright (C) 2017 WeeeOpen - Politecnico di Torino")
         print("This program comes with ABSOLUTELY NO WARRANTY.")
         print("Since this is a free software, you are welcome")
@@ -211,7 +217,8 @@ def check_user(username):
     """
     Check if an username exists in users list file.
     :param username: string
-    :return: string -> 'Name Surname'
+    :return: 'Name Surname' -> of that username
+             '' -> username don't exist
     """
     username = username.replace('.', ' ').lower()
     with open(USERS_PATH) as usersFile:
@@ -221,18 +228,16 @@ def check_user(username):
                user['serial'], user['nickname'].lower()]
         if username in uns:
             return user['name'] + ' ' + user['surname']
-    # if user not found
-    print("error: Username not recognized.")
-    print(HOSTNAME + ": Maybe you misspelled it or you're an intruder.")
-    secure_exit(2)
+    return ''  # if user not found
 
 
-def get_loggedin():
+def get_inlab():
     """
-    Get la list of logged in users
-    :return: list of string
+    Get the list of logged in users
+    :return: list of string -> all users in lab
+             [] -> nobody is in lab
     """
-    users_in_lab = []  # list of users in lab
+    users_in_lab = []
     with open(LOG_PATH) as logFile:
         for line in logFile:
             lr = LogRow(line)
@@ -241,48 +246,42 @@ def get_loggedin():
     return users_in_lab
 
 
-def is_loggedin(username):
+def is_inlab(username):
     """
-    Return True if <username> is already logged in else False
+    Check if <username> is in lab
     :param username: string
-    :return: bool
+    :return: True -> user is in lab
+             False -> user isn't in lab
     """
+    users_inlab = get_inlab()
     username = check_user(username)
-    users_in_lab = get_loggedin()
-    for user in users_in_lab:
+    for user in users_inlab:
         if user == username:
             return True
     return False
 
 
-def is_empty(file):
-    """
-    Check if file is empty.
-    :param file: File
-    :return: bool
-    """
-    if str(file.read())[:1] == '':
-        file.close()
-        return True
-    else:
-        file.seek(0)
-        return False
-
-
 def login(username):
+    """
+    Write a new LogRow in log file
+    :param username: string
+    :return: 0, 'Name Surname' -> Login success
+             1, '' -> username don't exist
+             2, 'Name Surname' -> user isn't in lab
+    """
     username = check_user(username)
-    lg = LogRow()
-    lg.username = username
-
-    if is_loggedin(username):
-        print(HOSTNAME + ": " + username + ", you're already logged in.")
-    else:
-        with open(LOG_PATH, 'a') as logFile:
-            logFile.write(repr(lg))
-        if not debuggingState:  # Send to ownCloud folder
-            os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
-        print(
-            HOSTNAME + ": Login successful! Hello " + username + "!")
+    if username:
+        if is_inlab(username):
+            return 2, username
+        else:
+            lg = LogRow()
+            lg.username = username
+            with open(LOG_PATH, 'a') as logFile:
+                logFile.write(repr(lg))
+            if not debuggingState:  # Send to ownCloud folder
+                os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
+            return 0, username
+    return 1, username
 
 
 def write_logout(username, workdone):
@@ -315,11 +314,12 @@ def write_logout(username, workdone):
 def logout(username):
     username = check_user(username)
 
-    if is_loggedin(username):
+    if is_inlab(username):
         try:
             workdone = input(HOSTNAME + ": What have you done?\n:: ")
             while len(workdone) > 128:
-                print(HOSTNAME + ": I didn't ask you the story of your life!")
+                print(
+                    HOSTNAME + ": I didn't ask you the story of your life!")
                 workdone = input(
                     HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
             write_logout(username, workdone)
@@ -362,10 +362,10 @@ def show(option):
         print(HOSTNAME + ": Reading log file...\n")
         with open(LOG_PATH) as logFile:
             for line in logFile:
-                print(line.replace('\n',''))
+                print(line.replace('\n', ''))
 
     elif option == "inlab":
-        users_in_lab = get_loggedin()
+        users_in_lab = get_inlab()
         count = len(users_in_lab)
         print(HOSTNAME + ": Reading log file...\n")
         for user in users_in_lab:
@@ -419,7 +419,8 @@ def stat(username):
     else:
         username = check_user(username)
         print("[+]     Name: " + username)
-        print("[+] WorkTime: " + timeConv(totWorkTime(username)) + currMonth)
+        print(
+            "[+] WorkTime: " + timeConv(totWorkTime(username)) + currMonth)
 
 
 # Print users list ordered by most active first.
@@ -461,17 +462,22 @@ def main(args):
             help()
         elif len(args) >= 3:
             help(args[2])
-
     elif command == "login":
         if len(args) != 3:
-            print("usage: " + EXECNAME + " login <username>")
+            __p_usage("login <username>")
             secure_exit()
         else:
-            login(args[2])
-
+            r, username = login(args[2])
+            if r == 0:
+                __p_host("Login successful! Hello " + username + "!")
+            elif r == 1:
+                print("error: Username not recognized.")
+                __p_host("Maybe you misspelled it or you're an intruder.")
+            elif r == 2:
+                __p_host(username + ", you're already logged in.")
     elif command == "logout":
         if len(args) != 3:
-            print("usage: " + EXECNAME + " logout <username>")
+            __p_usage("logout <username>")
             secure_exit()
         else:
             logout(args[2])
