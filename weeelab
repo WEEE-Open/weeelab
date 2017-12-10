@@ -29,6 +29,9 @@ __maintainer__ = "WeeeOpen team"
 
 EXECNAME = os.path.basename(__file__)  # name of this file
 
+# Disable owncloud uploads during debug sessions
+debuggingState = False
+
 # multi platform support ######################################################
 if sys.platform == 'linux':
     from socket import gethostname
@@ -44,6 +47,7 @@ if sys.platform == 'linux':
                                                              HOSTNAME)
     BACKUP_PATH = "/home/{}/ownCloud/weeeopen/{}/".format(HOSTUSER, HOSTNAME)
 elif sys.platform == 'win32':  # only for tests
+    debuggingState = True
     HOSTNAME = "testmachine"
     HOSTUSER = "developer"
     LOG_PATH = os.path.dirname(os.path.realpath(__file__)) + "/log.dat"
@@ -54,6 +58,15 @@ else:
 
 
 class LogRow:
+    """
+    LogRow -  row of log.dat
+    '%Y-%m-%d %H:%M - %H:%M - user - workdone'
+
+    time_in : <datetime> datetime.now()
+    time_work : <timedelta> = 'INLAB'
+    username : <string> = '__user__'
+    workdone : <string> = ''
+    """
     sep = ' - '
     mask_datetime = '%Y-%m-%d %H:%M'
     presence = 'INLAB'
@@ -62,8 +75,8 @@ class LogRow:
         if row == '':
             self.time_in = datetime.now()
             self.time_work = self.presence
-            self.user = 'bug'
-            self.info = ''
+            self.username = '__user__'
+            self.workdone = ''
         else:
             self.time_in = datetime.strptime(row.split(self.sep)[0].strip(),
                                              self.mask_datetime)
@@ -75,8 +88,8 @@ class LogRow:
                 self.time_work = timedelta(hours=int(td.split(':')[0]),
                                            minutes=int(td.split(':')[1]))
 
-            self.user = row.split(self.sep)[2].strip()
-            self.info = self.sep.join(row.split(self.sep)[3:]).strip()
+            self.username = row.split(self.sep)[2].strip()
+            self.workdone = self.sep.join(row.split(self.sep)[3:]).strip()
 
     def __repr__(self):
         if self.inlab():
@@ -87,29 +100,37 @@ class LogRow:
             mm = str(int((seconds % 3600) // 60)).zfill(2)
             tm = hh + ':' + mm
         return self.sep.join((self.time_in.strftime(self.mask_datetime),
-                              tm, self.user, self.info)) + '\n'
+                              tm, self.username, self.workdone)) + '\n'
 
-    def inlab(self, user=''):
-        if user == '':
+    def inlab(self, username=''):
+        """
+        Return True if <username> is logged in else False
+        :param username: 'name.surname'
+        :return: bool
+        """
+        if username == '':
             return self.time_work == self.presence
         else:
-            return (self.time_work == self.presence) and (self.user == user)
+            return (self.time_work == self.presence) and (
+                    self.username == username)
 
     def logout(self, workdone):
+        """
+        Set time_work, workdone and return True if success else return False
+        :param workdone: string
+        :return: bool
+        """
         if self.inlab():
             self.time_work = datetime.now() - self.time_in
-            self.info = workdone
+            self.workdone = workdone
             return True
-        else:
-            return False
+        return False
 
 
+# Colors for Terminal
 COLOR_RED = "\033[1;31m"
 COLOR_STANDARD = "\033[;7m"
 COLOR_NATIVE = "\033[m"
-
-# Disable owncloud uploads during debug sessions
-debuggingState = False
 
 
 # terminate the program being sure about undoing some changes like cli color
@@ -167,15 +188,23 @@ def help(cmd=''):
         secure_exit()
 
 
-# Check if log file exists.
 def checkLogFile():
+    """
+    Check if log file exists
+    :return: bool
+    """
     if not os.path.isfile(LOG_PATH):
         with open(LOG_PATH, 'x'):
             print(HOSTNAME + ": New log file was created.")
+        return False
+    return True
 
 
-# Check if users list file exists.
 def checkUsersFile():
+    """
+    Check if users list file exists.
+    :return:
+    """
     if not os.path.isfile(USERS_PATH):
         print("error: Users list not found.")
         secure_exit(2)
@@ -229,34 +258,63 @@ def checkMember(username):
     return username
 
 
-# Check if user is already logged in.
-def isLoggedIn(username):
+def get_loggedin():
+    """
+    Get la list of logged in users
+    :return: list of string
+    """
+    users_in_lab = []  # list of users in lab
+    with open(LOG_PATH) as logFile:
+        for line in logFile:
+            lr = LogRow(line)
+            if lr.inlab():
+                users_in_lab.append(lr.username)
+    return users_in_lab
+
+
+def is_loggedin(username):
+    """
+    Return True if <username> is already logged in else False
+    :param username: string
+    :return: bool
+    """
     username = checkMember(username)
-    logged = False
-    logFile = open(LOG_PATH, 'r')
-    for line in logFile:
-        if ('INLAB' in line) and (username in line):
-            logged = True
-            break
-    logFile.close()
-    return logged
+    users_in_lab = get_loggedin()
+    for user in users_in_lab:
+        if user == username:
+            return True
+    return False
 
 
-def nameExtr(username):
+def name_extr(username):
+    """
+    Return <Name Surname> from <name.surname> string
+    :param username: string
+    :return: string
+    """
     return username.replace('.', ' ').title()
 
 
-# Check if inputFile is empty.
-def isEmpty(inputFile):
-    if str(inputFile.read())[:1] == '':
-        inputFile.close()
+def is_empty(file):
+    """
+    Check if file is empty.
+    :param file: File
+    :return: bool
+    """
+    if str(file.read())[:1] == '':
+        file.close()
         return True
     else:
-        inputFile.seek(0)
+        file.seek(0)
         return False
 
 
 def createBackupIfNecessary():
+    """
+    Al primo login del mese rinomina log.dat
+    in log%Y-%m.dat e ne crea una copia
+    :return: True
+    """
     with open(LOG_PATH, 'r') as logFile:
         last_date = LogRow(logFile.readline()).time_in
 
@@ -275,6 +333,7 @@ def createBackupIfNecessary():
                       "log" + last_date.strftime('%Y-%m') + ".txt")
         print("Done!")
         checkLogFile()
+    return True
 
 
 def login(username):
@@ -282,27 +341,29 @@ def login(username):
     createBackupIfNecessary()
     username = checkMember(username)
     lg = LogRow()
-    lg.user = username
+    lg.username = username
 
-    if isLoggedIn(username):
-        print(HOSTNAME + ": " + nameExtr(
+    if is_loggedin(username):
+        print(HOSTNAME + ": " + name_extr(
             username) + ", you're already logged in.")
     else:
-        with open(LOG_PATH, "a") as logFile:
+        with open(LOG_PATH, 'a') as logFile:
             logFile.write(repr(lg))
         if not debuggingState:  # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(
-            HOSTNAME + ": Login successful! Hello " + nameExtr(username) + "!")
+            HOSTNAME + ": Login successful! Hello " + name_extr(
+                username) + "!")
 
 
-def writeLogout(username, workdone):
+def write_logout(username, workdone):
     checkLogFile()
 
     found = False
     logList = []
-    with open(LOG_PATH, 'r') as logFile:
-        # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
+    with open(LOG_PATH) as logFile:
+        # si salva tutto il file nella lista, se trova la voce che contiene
+        # INLAB e username del logout modifica quella stringa
         for line in logFile:
             lr = LogRow(line)
             if lr.inlab(username):
@@ -312,42 +373,35 @@ def writeLogout(username, workdone):
 
     if found:
         # Writing everything to log file
-        with open(LOG_PATH, "w") as logFile:
+        with open(LOG_PATH, 'w') as logFile:
             for line in logList:
                 logFile.write(line)
         if not debuggingState:
             # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(
-            HOSTNAME + ": Logout successful! Bye " + nameExtr(username) + "!")
+            HOSTNAME + ": Logout successful! Bye " + name_extr(username) + "!")
     else:
-        print(HOSTNAME + ": " + nameExtr(username) + " is not in lab!")
+        print(HOSTNAME + ": " + name_extr(username) + " is not in lab!")
 
 
 def logout(username):
     checkLogFile()
     username = checkMember(username)
 
-    found = False
-    with open(LOG_PATH, 'r') as logFile:
-        # si salva tutto il file nella lista, se trova la voce che contiene INLAB e username del logout modifica quella stringa
-        for line in logFile:
-            lr = LogRow(line)
-            if lr.inlab(username):
-                found = True
-    if found:
+    if is_loggedin(username):
         try:
             workdone = input(HOSTNAME + ": What have you done?\n:: ")
             while len(workdone) > 128:
                 print(HOSTNAME + ": I didn't ask you the story of your life!")
                 workdone = input(
                     HOSTNAME + ": What have you done? [BRIEFLY]\n>> ")
-            writeLogout(username, workdone)
+            write_logout(username, workdone)
         except KeyboardInterrupt:
             print(
-                HOSTNAME + ": Logout fail! Sorry " + nameExtr(username) + "!")
+                HOSTNAME + ": Logout fail! Sorry " + name_extr(username) + "!")
     else:
-        print(HOSTNAME + ": " + nameExtr(username) + " is not in lab!")
+        print(HOSTNAME + ": " + name_extr(username) + " is not in lab!")
 
 
 # logout by passing manually date and time
@@ -375,7 +429,7 @@ def manualLogout():
     if answer != "y":
         secure_exit()
 
-    writeLogout(username, workdone)
+    write_logout(username, workdone)
 
 
 def show(option):
@@ -383,22 +437,16 @@ def show(option):
 
     if option == "log":
         print(HOSTNAME + ": Reading log file...\n")
-        logFile = open(LOG_PATH, "r")
-        for line in logFile:
-            print(line)
-        logFile.close()
+        with open(LOG_PATH) as logFile:
+            for line in logFile:
+                print(line)
 
     elif option == "inlab":
-        count = 0
-        currDay = datetime.now().strftime("%Y-%m-%d")
+        users_in_lab = get_loggedin()
+        count = len(users_in_lab)
         print(HOSTNAME + ": Reading log file...\n")
-        logFile = open(LOG_PATH, "r")
-        for line in logFile:
-            if ('INLAB' in line) and (currDay in line):
-                count += 1
-                print("> " + nameExtr(line[47:line.rfind(">")]))
-        logFile.close()
-
+        for user in users_in_lab:
+            print("> " + name_extr(user))
         if count == 0:
             print(HOSTNAME + ": Nobody is in lab right now.")
         elif count == 1:
@@ -409,7 +457,7 @@ def show(option):
                     c=count))
 
     elif option == "help":
-        help("default")
+        help()
 
     else:
         print("error: option " + option + " is not defined.")
@@ -442,14 +490,14 @@ def stat(username):
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
             currUser = line.split()[0]
-            print("[+]     Name: " + nameExtr(currUser))
+            print("[+]     Name: " + name_extr(currUser))
             print("[+] WorkTime: " + timeConv(
                 totWorkTime(currUser)) + currMonth + "\n")
         usersFile.close()
 
     else:
         username = checkMember(username)
-        print("[+]     Name: " + nameExtr(username))
+        print("[+]     Name: " + name_extr(username))
         print("[+] WorkTime: " + timeConv(totWorkTime(username)) + currMonth)
 
 
@@ -477,7 +525,7 @@ def top(length):
     for i in range(0, length):
         if len(usersList) <= i:
             break
-        print("[" + str(count).zfill(2) + "] " + nameExtr(usersList[i][1]))
+        print("[" + str(count).zfill(2) + "] " + name_extr(usersList[i][1]))
         count += 1
 
 
@@ -533,7 +581,6 @@ def main(args):
                 top(int(args[2]))
         else:
             top(10)
-
     elif command == "admin":
         sys.stdout.write(COLOR_RED)
         print("WARNING: be sure of what you will do!")
@@ -544,7 +591,6 @@ def main(args):
         else:
             manualLogout()
             sys.stdout.write(COLOR_NATIVE)
-
     else:
         print("error: Invalid command detected -> " + args[1])
         print(HOSTNAME + ": Try with \"" + EXECNAME + " help\"")
