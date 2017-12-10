@@ -19,11 +19,12 @@ WEEELAB - Log management module for garbaging paper sign sheet.
 """
 
 import os
+import json
 from datetime import datetime
 from datetime import timedelta
 import sys
 
-__version__ = "2.1"
+__version__ = "2.2"
 __author__ = "Stefano Enrico Mendola (aka Hyd3L)"
 __maintainer__ = "WeeeOpen team"
 
@@ -43,15 +44,15 @@ if sys.platform == 'linux':
         raise PermissionError("can't execute " + EXECNAME + " as root.")
     HOSTUSER = pwd.getpwuid(UID).pw_name  # "weeeopen"
     LOG_PATH = "/home/{}/.local/share/{}/log.dat".format(HOSTUSER, HOSTNAME)
-    USERS_PATH = "/home/{}/.local/share/{}/users.dat".format(HOSTUSER,
-                                                             HOSTNAME)
+    USERS_PATH = "/home/{}/.local/share/{}/users.json".format(HOSTUSER,
+                                                              HOSTNAME)
     BACKUP_PATH = "/home/{}/ownCloud/weeeopen/{}/".format(HOSTUSER, HOSTNAME)
 elif sys.platform == 'win32':  # only for tests
     debuggingState = True
     HOSTNAME = "testmachine"
     HOSTUSER = "developer"
     LOG_PATH = os.path.dirname(os.path.realpath(__file__)) + "/log.dat"
-    USERS_PATH = os.path.dirname(os.path.realpath(__file__)) + "/users.dat"
+    USERS_PATH = os.path.dirname(os.path.realpath(__file__)) + "/users.json"
     BACKUP_PATH = os.path.dirname(os.path.realpath(__file__)) + "/backup/"
 else:
     raise EnvironmentError('OS not supported')
@@ -60,7 +61,7 @@ else:
 class LogRow:
     """
     LogRow -  row of log.dat
-    '%Y-%m-%d %H:%M - %H:%M - user - workdone'
+    '%Y-%m-%d %H:%M - %H:%M - username - workdone'
 
     time_in : <datetime> datetime.now()
     time_work : <timedelta> = 'INLAB'
@@ -188,38 +189,9 @@ def help(cmd=''):
         secure_exit()
 
 
-def checkLogFile():
-    """
-    Check if log file exists
-    :return: bool
-    """
-    if not os.path.isfile(LOG_PATH):
-        with open(LOG_PATH, 'x'):
-            print(HOSTNAME + ": New log file was created.")
-        return False
-    return True
-
-
-def checkUsersFile():
-    """
-    Check if users list file exists.
-    :return:
-    """
-    if not os.path.isfile(USERS_PATH):
-        print("error: Users list not found.")
-        secure_exit(2)
-
-
 # check if the passed date is in the right format
 def checkDate(input):
     date = input.split("/")
-
-    '''
-# debug only
-    print(str(len(date[0])))
-    print(str(len(date[1])))
-    print(str(len(date[2])))
-    '''
 
     if len(date[0]) != 2 or len(date[1]) != 2 or len(date[2]) != 4:
         print("date format error")
@@ -235,27 +207,24 @@ def checkHour(input):
     return input
 
 
-# Check if an username exists in users list file.
-def checkMember(username):
-    checkUsersFile()
-    found = False
-    usersFile = open(USERS_PATH, 'r')
-
-    for line in usersFile:
-        # Remove newline character from the line read from file
-        line = line.replace('\n', '')
-        words = line.split()
-        if username in words:
-            found = True
-            username = words[0]
-            break
-    usersFile.close()
-
-    if not found:
-        print("error: Username not recognized.")
-        print(HOSTNAME + ": Maybe you misspelled it or you're an intruder.")
-        secure_exit(2)
-    return username
+def check_user(username):
+    """
+    Check if an username exists in users list file.
+    :param username: string
+    :return: string -> 'Name Surname'
+    """
+    username = username.replace('.', ' ').lower()
+    with open(USERS_PATH) as usersFile:
+        users_dict = json.load(usersFile)
+    for user in users_dict['users']:
+        uns = [(user['name'] + ' ' + user['surname']).lower(),
+               user['serial'], user['nickname'].lower()]
+        if username in uns:
+            return user['name'] + ' ' + user['surname']
+    # if user not found
+    print("error: Username not recognized.")
+    print(HOSTNAME + ": Maybe you misspelled it or you're an intruder.")
+    secure_exit(2)
 
 
 def get_loggedin():
@@ -278,21 +247,12 @@ def is_loggedin(username):
     :param username: string
     :return: bool
     """
-    username = checkMember(username)
+    username = check_user(username)
     users_in_lab = get_loggedin()
     for user in users_in_lab:
         if user == username:
             return True
     return False
-
-
-def name_extr(username):
-    """
-    Return <Name Surname> from <name.surname> string
-    :param username: string
-    :return: string
-    """
-    return username.replace('.', ' ').title()
 
 
 def is_empty(file):
@@ -309,56 +269,23 @@ def is_empty(file):
         return False
 
 
-def createBackupIfNecessary():
-    """
-    Al primo login del mese rinomina log.dat
-    in log%Y-%m.dat e ne crea una copia
-    :return: True
-    """
-    with open(LOG_PATH, 'r') as logFile:
-        last_date = LogRow(logFile.readline()).time_in
-
-    last_month, last_year = last_date.month, last_date.year
-    curr_date = datetime.now()
-    curr_month, curr_year = curr_date.month, curr_date.year
-    if (curr_month > last_month) or (curr_year > last_year):
-        print(HOSTNAME + ": Backing up log file... ")
-        file_ext = os.path.splitext(LOG_PATH)[1]
-        new_path = LOG_PATH[:-len(file_ext)] + last_date.strftime(
-            '%Y-%m') + file_ext
-        os.rename(LOG_PATH, new_path)
-        if not debuggingState:
-            # Send to ownCloud folder
-            os.system("cp " + new_path + " " + BACKUP_PATH +
-                      "log" + last_date.strftime('%Y-%m') + ".txt")
-        print("Done!")
-        checkLogFile()
-    return True
-
-
 def login(username):
-    checkLogFile()
-    createBackupIfNecessary()
-    username = checkMember(username)
+    username = check_user(username)
     lg = LogRow()
     lg.username = username
 
     if is_loggedin(username):
-        print(HOSTNAME + ": " + name_extr(
-            username) + ", you're already logged in.")
+        print(HOSTNAME + ": " + username + ", you're already logged in.")
     else:
         with open(LOG_PATH, 'a') as logFile:
             logFile.write(repr(lg))
         if not debuggingState:  # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(
-            HOSTNAME + ": Login successful! Hello " + name_extr(
-                username) + "!")
+            HOSTNAME + ": Login successful! Hello " + username + "!")
 
 
 def write_logout(username, workdone):
-    checkLogFile()
-
     found = False
     logList = []
     with open(LOG_PATH) as logFile:
@@ -380,14 +307,13 @@ def write_logout(username, workdone):
             # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(
-            HOSTNAME + ": Logout successful! Bye " + name_extr(username) + "!")
+            HOSTNAME + ": Logout successful! Bye " + username + "!")
     else:
-        print(HOSTNAME + ": " + name_extr(username) + " is not in lab!")
+        print(HOSTNAME + ": " + username + " is not in lab!")
 
 
 def logout(username):
-    checkLogFile()
-    username = checkMember(username)
+    username = check_user(username)
 
     if is_loggedin(username):
         try:
@@ -399,16 +325,15 @@ def logout(username):
             write_logout(username, workdone)
         except KeyboardInterrupt:
             print(
-                HOSTNAME + ": Logout fail! Sorry " + name_extr(username) + "!")
+                HOSTNAME + ": Logout fail! Sorry " + username + "!")
     else:
-        print(HOSTNAME + ": " + name_extr(username) + " is not in lab!")
+        print(HOSTNAME + ": " + username + " is not in lab!")
 
 
 # logout by passing manually date and time
 def manualLogout():
-    checkLogFile()
     tmpUsr = input("ADMIN--> insert username: ")
-    username = checkMember(tmpUsr)
+    username = check_user(tmpUsr)
 
     tmpDate = input("ADMIN--> insert date (gg/mm/aaaa): ")
     date = checkDate(tmpDate)
@@ -433,8 +358,6 @@ def manualLogout():
 
 
 def show(option):
-    checkLogFile()
-
     if option == "log":
         print(HOSTNAME + ": Reading log file...\n")
         with open(LOG_PATH) as logFile:
@@ -446,7 +369,7 @@ def show(option):
         count = len(users_in_lab)
         print(HOSTNAME + ": Reading log file...\n")
         for user in users_in_lab:
-            print("> " + name_extr(user))
+            print("> " + user)
         if count == 0:
             print(HOSTNAME + ": Nobody is in lab right now.")
         elif count == 1:
@@ -465,7 +388,6 @@ def show(option):
 
 # Returns total work time in minutes
 def totWorkTime(username):
-    checkLogFile()
     timeSpent = 0
     logFile = open(LOG_PATH, "r")
     for line in logFile:
@@ -486,24 +408,22 @@ def stat(username):
 
     # Compute stats for all users (Extremely stupid algorithm, but works fine)
     if username == "all":
-        checkUsersFile()
         usersFile = open(USERS_PATH, "r")
         for line in usersFile:
             currUser = line.split()[0]
-            print("[+]     Name: " + name_extr(currUser))
+            print("[+]     Name: " + currUser)
             print("[+] WorkTime: " + timeConv(
                 totWorkTime(currUser)) + currMonth + "\n")
         usersFile.close()
 
     else:
-        username = checkMember(username)
-        print("[+]     Name: " + name_extr(username))
+        username = check_user(username)
+        print("[+]     Name: " + username)
         print("[+] WorkTime: " + timeConv(totWorkTime(username)) + currMonth)
 
 
 # Print users list ordered by most active first.
 def top(length):
-    checkUsersFile()
     usersList = [(int, str)]
     usersFile = open(USERS_PATH, 'r')
 
@@ -525,7 +445,7 @@ def top(length):
     for i in range(0, length):
         if len(usersList) <= i:
             break
-        print("[" + str(count).zfill(2) + "] " + name_extr(usersList[i][1]))
+        print("[" + str(count).zfill(2) + "] " + usersList[i][1])
         count += 1
 
 
@@ -596,5 +516,38 @@ def main(args):
         print(HOSTNAME + ": Try with \"" + EXECNAME + " help\"")
 
 
+def sanity_check():
+    # Check if LOG_PATH exist, if False make it
+    if not os.path.isfile(LOG_PATH):
+        with open(LOG_PATH, 'x'):
+            print(HOSTNAME + ": New log file was created.")
+    # se è un nuovo mese rinomina log.dat in log%Y-%m.dat e ne crea una copia
+    with open(LOG_PATH) as logFile:
+        last_date = LogRow(logFile.readline()).time_in
+
+    last_month, last_year = last_date.month, last_date.year
+    curr_date = datetime.now()
+    curr_month, curr_year = curr_date.month, curr_date.year
+    if (curr_month > last_month) or (curr_year > last_year):
+        print(HOSTNAME + ": Backing up log file... ")
+        file_ext = os.path.splitext(LOG_PATH)[1]
+        new_path = LOG_PATH[:-len(file_ext)] + last_date.strftime(
+            '%Y-%m') + file_ext
+        os.rename(LOG_PATH, new_path)
+        if not debuggingState:
+            # Send to ownCloud folder
+            os.system("cp " + new_path + " " + BACKUP_PATH +
+                      "log" + last_date.strftime('%Y-%m') + ".txt")
+        if not os.path.isfile(LOG_PATH):
+            with open(LOG_PATH, 'x'):
+                print(HOSTNAME + ": New log file was created.")
+        print("Done!")
+    # Check if users list file exists.
+    if not os.path.isfile(USERS_PATH):
+        print("error: Users list not found.")
+        secure_exit(2)
+
+
+sanity_check()
 if __name__ == '__main__':
     main(sys.argv)
