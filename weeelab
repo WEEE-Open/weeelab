@@ -362,7 +362,7 @@ def show(option):
         print(HOSTNAME + ": Reading log file...\n")
         with open(LOG_PATH) as logFile:
             for line in logFile:
-                print(line)
+                print(line.replace('\n',''))
 
     elif option == "inlab":
         users_in_lab = get_loggedin()
