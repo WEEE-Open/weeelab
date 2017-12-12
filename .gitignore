@@ -4,3 +4,5 @@
 test.php
 # PyCharm
 .idea
+# Python cache
+__pycache__/
