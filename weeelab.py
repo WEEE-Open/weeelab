@@ -2,7 +2,7 @@
 
 """
 WEEELAB - Log management module for garbaging paper sign sheet.
-
+Author: WeeeOpen Team
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -23,8 +23,7 @@ from datetime import *
 import sys
 
 __version__ = "2.3"
-__author__ = "Stefano Enrico Mendola (aka Hyd3L)"
-__maintainer__ = "WeeeOpen team"
+__author__ = "WeeeOpen team"
 
 EXECNAME = os.path.basename(__file__)  # name of this file
 debuggingState = False  # Disable owncloud uploads during debug sessions
@@ -381,38 +380,37 @@ def __p_error(string=''):
 def cmd_help(cmd=''):
     if cmd == "login":
         __p_usage("login <username>")
-        __p_host("Username format is 'first.last' or 'XXXXXX'")
+        __p_host("Username format is 'name.surname' or 'XXXXXX'")
         print("                where XXXXXX is your serial number.")
-        print("                You can even use an alias if defined.")
+        print("                You can even use a nickname if defined.")
         secure_exit()
 
     elif cmd == "logout":
         __p_usage("logout <username>")
-        __p_host("Username format is 'first.last' or 'XXXXXX'")
+        __p_host("Username format is 'name.surname' or 'XXXXXX'")
         print("                where XXXXXX is your serial number.")
-        print("                You can even use an alias if defined.")
+        print("                You can even use a nickname if defined.")
         secure_exit()
 
     elif cmd == "show":
         __p_usage("show <option>")
-        print("  available options:")
-        print("      log : Print log file to stdout.")
-        print("    inlab : View a list of students in lab now.")
+        __p_host("available options:")
+        print("               log : Show log file.")
+        print("             inlab : Show a list of students in lab now.")
         secure_exit()
 
     elif cmd == "stat":
         __p_usage("stat <username>")
-        __p_host("If you want to view stats for everybody,")
-        print("                use \"" + EXECNAME + " stat all\"")
+        __p_host("Show time spend in lab for <username>.")
 
     elif cmd == "top":
         __p_usage("top <list_length>")
+        __p_host("Show Hall of Fame.")
 
     else:
-        print(
-            "WEEELAB v" + __version__ + " - Log management module for garbaging paper sign sheet.")
-        print(
-            "Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)")
+        print("WEEELAB v" + __version__ +
+              " - Log management module for garbaging paper sign sheet.")
+        print("Author: WeeeOpen Team")
         print("Copyright (C) 2017 WeeeOpen - Politecnico di Torino")
         print("This program comes with ABSOLUTELY NO WARRANTY.")
         print("Since this is a free software, you are welcome")
@@ -421,10 +419,8 @@ def cmd_help(cmd=''):
         print("    login  <username> : Sign access to the lab.")
         print("    logout <username> : Sign quit from the lab.")
         print("    show   <option>   : Retrieve informations.")
-        print(
-            "    stat   <username> : Compute stats for a user or for all users.")
-        print(
-            "    top <list_length> : Show a list of top <list_length> members.")
+        print("    stat   <username> : Compute stats for a user.")
+        print("    top <int> : Show a list of top <int> members.")
         secure_exit()
 
 
@@ -471,7 +467,7 @@ def main(args):
                             __p_host("I didn't ask the story of your life!")
                             workdone = input(
                                 HOSTNAME + ": What have you done? [BRIEFLY]\n")
-                        result = logout(user, workdone)
+                        logout(user, workdone)
                         __p_host("Logout successful! Bye " + str(user) + "!")
                     except KeyboardInterrupt:
                         __p_host("Logout fail! Sorry " + str(user) + "!")
