@@ -337,10 +337,10 @@ def manualLogout():  # TODO manual_logout review
     logout(username, workdone)
 
 
-def tot_timework(user):
+def stat(user):
     """
     Calculates all time spent in lab for that user
-    :param user: string
+    :param user: User
     :return: timedelta -> total of time spent in lab
     """
     total_timework = timedelta()
@@ -351,44 +351,18 @@ def tot_timework(user):
     return total_timework
 
 
-def stat():
+def top():
     """
-    Return tot_timework() for all users with minutes in lab
+    Return stat() for all users with minutes in lab
     :return: list of (timedelta, User) ->
     """
     stat_list = []
     for user in user_list:
-        t_tw = tot_timework(user)
+        t_tw = stat(user)
         if t_tw > timedelta():
-            stat_list.append((tot_timework(user), user))
+            stat_list.append((stat(user), user))
+    stat_list.sort(reverse=True)
     return stat_list
-
-
-# Print users list ordered by most active first.
-def top(length):  # TODO top review
-    usersList = [(int, str)]
-    usersFile = open(USERS_PATH)
-
-    # Loading usernames from file
-    for line in usersFile:
-        usersList.append((0, line.split()[0].replace("\n", '')))
-    usersFile.close()
-    usersList.remove((int, str))
-
-    # Computing total work time for each member
-    for i in range(0, len(usersList)):
-        user = usersList[i]
-        user = (tot_timework(user[1]),) + user[1:]
-        usersList[i] = user
-    usersList.sort(reverse=True)
-
-    print(HOSTNAME + ": Hall of Fame\n")
-    count = 1
-    for i in range(0, length):
-        if len(usersList) <= i:
-            break
-        print("[" + str(count).zfill(2) + "] " + usersList[i][1])
-        count += 1
 
 
 # Repetitive print...
@@ -540,33 +514,44 @@ def main(args):
                 print("error: option <" + args[2] + "> is not defined.")
 
     elif command == "stat":
-        if len(args) == 2:
-            stat()
-            __p_host("Computing stats...\n")
-            print(datetime.now().strftime("In %B %Y :"))
-            for item in stat():
-                print('> ' + td2str(item[0]) + ' - ' + str(item[1]))
-        elif len(args) == 3:
+        if len(args) != 3:
+            __p_usage("stat <username>")
+            secure_exit()
+        else:
             try:
                 user = get_user(args[2])
                 __p_host("Computing stats...\n")
                 print(datetime.now().strftime("In %B %Y :"))
-                print('> ' + td2str(tot_timework(user)) + ' - ' + str(user))
+                print('> ' + td2str(stat(user)) + ' - ' + str(user))
             except NameError:  # if user not found
                 __p_error("Username not recognized.")
                 __p_host("Maybe you misspelled it or you're an intruder.")
-        else:
-            __p_usage("stat <username>")
-            secure_exit()
 
     elif command == "top":
         if len(args) == 3:
             if not args[2].isdigit:
                 __p_usage("top <list_length>")
+                secure_exit()
             else:
-                top(int(args[2]))
+                __p_host("Computing Hall of Fame...\n")
+                print(datetime.now().strftime("In %B %Y :"))
+                print('pos) hh:mm - Name Surname')
+                count = 0
+                for item in top():
+                    count += 1
+                    print('{} ) {} - {}'.format(str(count).zfill(2),
+                                                td2str(item[0]), str(item[1])))
+                    if count >= int(args[2]):
+                        break
         else:
-            top(10)
+            __p_host("Computing Hall of Fame...\n")
+            print(datetime.now().strftime("In %B %Y :"))
+            print('pos) hh:mm - Name Surname')
+            count = 0
+            for item in top():
+                count += 1
+                print('{} ) {} - {}'.format(str(count).zfill(2),
+                                            td2str(item[0]), str(item[1])))
     elif command == "admin":
         sys.stdout.write(COLOR_RED)
         print("WARNING: be sure of what you will do!")
@@ -609,24 +594,25 @@ def sanity_check():
     except:
         __p_error("Log file have an error at line " + str(counter))
     # se è un nuovo mese rinomina log.dat in log%Y-%m.dat e ne crea una copia
-    last_date = LogRow(get_log()[-1]).timein
-    last_month, last_year = last_date.month, last_date.year
-    curr_date = datetime.now()
-    curr_month, curr_year = curr_date.month, curr_date.year
-    if (curr_month > last_month and curr_year == last_year) or (
-            curr_year > last_year):
-        __p_host("Backing up log file...")
-        file_ext = os.path.splitext(LOG_PATH)[1]
-        new_path = LOG_PATH[:-len(file_ext)] + last_date.strftime(
-            '%Y-%m') + '.' + file_ext
-        os.rename(LOG_PATH, new_path)
-        if not debuggingState:
-            # Send to ownCloud folder
-            os.system("cp " + new_path + " " + BACKUP_PATH +
-                      "log" + last_date.strftime('%Y-%m') + ".txt")
-        if not os.path.isfile(LOG_PATH):
-            with open(LOG_PATH, 'x'):
-                __p_host("New log file was created.")
+    if len(get_log()):
+        last_date = LogRow(get_log()[-1]).timein
+        last_month, last_year = last_date.month, last_date.year
+        curr_date = datetime.now()
+        curr_month, curr_year = curr_date.month, curr_date.year
+        if (curr_month > last_month and curr_year == last_year) or (
+                curr_year > last_year):
+            __p_host("Backing up log file...")
+            file_ext = os.path.splitext(LOG_PATH)[1]
+            new_path = LOG_PATH[:-len(file_ext)] + last_date.strftime(
+                '%Y-%m') + '.' + file_ext
+            os.rename(LOG_PATH, new_path)
+            if not debuggingState:
+                # Send to ownCloud folder
+                os.system("cp " + new_path + " " + BACKUP_PATH +
+                          "log" + last_date.strftime('%Y-%m') + ".txt")
+            if not os.path.isfile(LOG_PATH):
+                with open(LOG_PATH, 'x'):
+                    __p_host("New log file was created.")
 
 
 sanity_check()
