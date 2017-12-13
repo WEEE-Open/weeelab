@@ -1,0 +1,20 @@
+{
+  "users": [
+    {
+      "name": "Name",
+      "surname": "Surname",
+      "serial": "",
+      "telegramID": "87654321",
+      "nickname": "",
+      "level": 1
+    },
+    {
+      "name": "Name",
+      "surname": "LastName",
+      "serial": "789012",
+      "telegramID": "12345678",
+      "nickname": "Nickname",
+      "level": 1
+    }
+  ]
+}
