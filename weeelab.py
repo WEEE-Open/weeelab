@@ -23,7 +23,7 @@ from datetime import *
 import sys
 
 __version__ = "2.3"
-__author__ = "WeeeOpen team"
+__author__ = "WEEE Open team"
 
 EXECNAME = os.path.basename(__file__)  # name of this file
 debuggingState = False  # Disable owncloud uploads during debug sessions
@@ -258,7 +258,7 @@ def login(user):
     Write a new LogRow in log file
     :param user: User
     :return: 0 -> Login success
-             1 -> user isn't in lab
+             1 -> user is already in lab
     """
     if is_inlab(user):
         return 1
@@ -461,18 +461,22 @@ def main(args):
             try:
                 user = get_user(args[2])
                 if is_inlab(user):
-                    try:
-                        workdone = input(HOSTNAME + ": What have you done?\n")
-                        while len(workdone) > LogRow.len_wd:
-                            __p_host("I didn't ask the story of your life!")
-                            workdone = input(
-                                HOSTNAME + ": What have you done? [BRIEFLY]\n")
+                    if len(args) == 4:
+                        workdone = args[3]
                         logout(user, workdone)
-                        __p_host("Logout successful! Bye " + str(user) + "!")
-                    except KeyboardInterrupt:
-                        __p_host("Logout fail! Sorry " + str(user) + "!")
-                else:
-                    __p_host(str(user) + " is not in lab!")
+                    else:
+                        try:
+                            workdone = input(HOSTNAME + ": What have you done?\n")
+                            while len(workdone) > LogRow.len_wd:
+                                __p_host("I didn't ask the story of your life!")
+                                workdone = input(
+                                    HOSTNAME + ": What have you done? [BRIEFLY]\n")
+                            logout(user, workdone)
+                            __p_host("Logout successful! Bye " + str(user) + "!")
+                        except KeyboardInterrupt:
+                            __p_host("Logout fail! Sorry " + str(user) + "!")
+                    else:
+                        __p_host(str(user) + " is not in lab!")
             except NameError:  # if user not found
                 __p_error("Username not recognized.")
                 __p_host("Maybe you misspelled it or you're an intruder.")
