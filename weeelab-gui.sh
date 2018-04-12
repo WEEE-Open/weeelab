@@ -47,8 +47,20 @@ while [[ $result -ne 0 ]]; do
         dialog --title $title --backtitle $backtitle \
         --inputbox "What have you done?" 8 80 2>/tmp/weeelab-msg.$$
         msg=`cat /tmp/weeelab-msg.$$`
+        while [[ size=${#msg} -gt 128 ]]; do
+            rm /tmp/weeelab-msg.$$
+            dialog --title $title --backtitle $backtitle \
+            --msgbox 'I did not ask you the story of your life.\nType what you have done in 128 chars.' 7 55
+            dialog --title $title --backtitle $backtitle \
+            --inputbox "What have you done?" 8 80 2>/tmp/weeelab-msg.$$
+            msg=`cat /tmp/weeelab-msg.$$`
+        done
         rm /tmp/weeelab-msg.$$
         weeelab logout $user \"$msg\"
         result=$?
+        if [[ $result -ne 0 ]]; then
+            dialog --title $title --backtitle $backtitle \
+            --msgbox 'ERROR: User not found! Retry' 6 20
+        fi
     fi
 done
