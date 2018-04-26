@@ -145,7 +145,6 @@ def checkMember(username):
             found = True
             username = str(u['name']).lower()+'.'+str(u['surname']).lower()
             break
-    usersFile.close()
 
     if not found:
         print "error: Username not recognized."
