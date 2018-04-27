@@ -1,36 +1,46 @@
 # weeelab
 [![License](http://img.shields.io/:license-GPL3.0-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-![Version](https://img.shields.io/badge/version-1.4-yellow.svg)
+![Version](https://img.shields.io/badge/version-2.0-yellow.svg)
 
 Python script for garbaging paper sign sheet.  
 The goal of this script is to move to the trash can the paper sign sheet.
 
 ## INSTALL
+
 Open a terminal and type these following commands:
 
     git clone https://github.com/weee-open/weeelab
     cd weeelab
-    sudo cp weeelab /bin/weeelab
-    cd ..
-    rm -fr weeelab
+    sudo cp weeelab.py /bin/weeelab
 
 ## COMMAND SYNTAX
+
 `weeelab.py [OPTION] [USER_NAME]`
 
-Available options:  
-  `login <username>`  : Sign in to the lab.    
-  `logout <username>` : Sign out from the lab.    
-  `show <option>` : Obtain status informations. Options available:
-   - `log` : Show log file.  
-   - `inlab` : View a list of operators in lab now.
-   
-  `top <int>`: Show a list of \<int\> top members. \<int\> is optional.     
-  `stat <username>`   : Compute stats for a user or for all users.  
-  
+Available options:
+    usage: weeelab.py [-h] [-d]
+                      (-i USER | -o USER | -p | -l | -t [N] | -s [USER] | -a)
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d, --debug           enable debug mode (don't copy files to ownCloud)
+
+    Actions:
+      -i USER, --login USER
+                            log in USER.
+      -o USER, --logout USER
+                            log out USER
+      -p, --inlab           show who's in lab (logged in)
+      -l, --log             show log file
+      -t [N], --top [N]     show top N users by hours spent in lab (default 10)
+      -s [USER], --stat [USER]
+                            show stats for USER or for eveyone
+      -a, --admin           enter admin mode
 
 ## NOTES
-- The file `log.dat` is filled by adding new lines.
-- The file `users.json` contain users info. See the example file and avoid spaces in the fields. 
+
+- The file `log.txt` is filled by appending new lines.
+- The file `users.json` contains users info. See the example file and avoid spaces in the fields.
 Don't use multiple serial, telegramID or nickname
 - The `login` and `logout` functions now work with serial numbers, telegramID and
 with nicknames as well.

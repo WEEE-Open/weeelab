@@ -1,20 +1,19 @@
 {
   "users": [
     {
-      "name": "Name",
-      "surname": "Surname",
-      "serial": "",
+      "name": "John",
+      "surname": "Doe",
+      "username": "john.doe",
+      "serial": "120120",
       "telegramID": "87654321",
-      "nickname": "",
+      "nicknames": ["john", "old.johnny"],
       "level": 1
     },
     {
-      "name": "Name",
-      "surname": "LastName",
-      "serial": "789012",
-      "telegramID": "12345678",
-      "nickname": "Nickname",
-      "level": 1
+      "name": "Jane",
+      "surname": "Smith",
+      "username": "jane.smith",
+      "level": 3
     }
   ]
 }
