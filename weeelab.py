@@ -37,8 +37,8 @@ EXECNAME = __file__.split('/')[-1]
 UID = os.getuid()
 HOSTNAME = gethostname()
 HOSTUSER = getuser()
-LOG_PATH = "/home/" + HOSTUSER + "/.local/share/" + EXECNAME + "/log.dat"
-USERS_PATH = "/home/" + HOSTUSER + "/.local/share/" + EXECNAME + "/users.json"
+LOG_PATH = "/home/" + HOSTUSER + "/.local/share/" + EXECNAME + "/log.txt"
+USERS_PATH = "/home/" + HOSTUSER + "/ownCloud/Weeelab/users.json"
 BACKUP_PATH = "/home/" + HOSTUSER + "/ownCloud/weeeopen/" + EXECNAME.capitalize() + "/"
 
 # Disable owncloud uploads during debug sessions
@@ -107,7 +107,7 @@ def print_help(for_what):
 # Check if log file exists.
 def check_log_file():
     if os.path.isfile(LOG_PATH) is False:
-        print("error: Log file not found.")
+        print("error: Log file not found in {}.".format(LOG_PATH1))
         secure_exit(1)
 
 
@@ -163,25 +163,8 @@ def check_member(username):
         secure_exit(2)
     return username
 
-
-# Return last line of log file
-def get_last_line():
-    log_file = open(LOG_PATH, "r")
-    # TODO: why is line not used? Why are we seeking stuff up and down!?
-    for line in log_file:
-        log_file.seek(0, 2)
-        log_file_size = log_file.tell()
-        log_file.seek(max(log_file_size - 1024, 0), 0)
-        log_file_buff = log_file.readlines()
-    log_file.close()
-    # TODO: this may be read uninitialized
-    last_line = log_file_buff[-1:]
-    return last_line
-
-
 # Check if user is already logged in.
 def is_logged_in(username):
-    username = check_member(username)
     logged = False
     log_file = open(LOG_PATH, "r")
     for line in log_file:
@@ -221,10 +204,10 @@ def create_backup_if_necessary():
         last_year = int(datetime.now().strptime(last_line, "%m/%Y").strftime("%Y"))
 
         if (curr_month > last_month) or (curr_year > last_year):
-            print(HOSTNAME + ": Backing up log file... ", end=' ')
+            print(HOSTNAME + ": Backing up log file... ")
             new_path = LOG_PATH[:len(LOG_PATH) - 4] + str(last_year) + str(last_month).zfill(2) + ".dat"
             os.rename(LOG_PATH, new_path)
-            if not debuggingState:
+            if not debugging_state:
                 # Send to ownCloud folder
                 os.system(
                     "cp " + new_path + " " + BACKUP_PATH + "log" + str(last_year) + str(last_month).zfill(2) + ".txt")
@@ -247,7 +230,7 @@ def login(username):
         log_file = open(LOG_PATH, "a")
         log_file.write(login_string)
         log_file.close()
-        if not debuggingState:
+        if not debugging_state:
             # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(HOSTNAME + ": Login successful! Hello " + name_extr(username) + "!")
@@ -290,7 +273,7 @@ def write_logout(username, curr_time, workdone):
         for line in log_list:
             log_file.write(line)
         log_file.close()
-        if not debuggingState:
+        if not debugging_state:
             # Send to ownCloud folder
             os.system("cp " + LOG_PATH + " " + BACKUP_PATH + "log.txt")
         print(HOSTNAME + ": Logout successful! Bye " + name_extr(username) + "!")
