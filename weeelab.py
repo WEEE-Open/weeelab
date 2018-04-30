@@ -534,14 +534,14 @@ if __name__ == '__main__':
 	# Add commands here, like any normal person instead of hand-coding a parser (or at least make it a LALR(1) parser)
 	parser.add_argument('-d', '--debug', action='store_true', help='enable debug mode (don\'t copy files to ownCloud)')
 	group = parser.add_argument_group('Actions').add_mutually_exclusive_group(required=True)
-	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER.')
+	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER')
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-t', '--top', type=int, nargs='?', metavar='N', const=10,
 	                   help='show top N users by hours spent in lab (default 10)')
 	group.add_argument('-s', '--stat', type=str, nargs='?', const=True, metavar='USER',
-	                   help='show stats for USER or for eveyone')
+	                   help='show stats for USER or for everyone')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
 	args = parser.parse_args()
 	main(vars(args))

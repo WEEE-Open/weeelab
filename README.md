@@ -15,9 +15,6 @@ Open a terminal and type these following commands:
 
 ## COMMAND SYNTAX
 
-`weeelab.py [OPTION] [USER_NAME]`
-
-Available options:
     usage: weeelab.py [-h] [-d]
                       (-i USER | -o USER | -p | -l | -t [N] | -s [USER] | -a)
 
@@ -27,14 +24,14 @@ Available options:
 
     Actions:
       -i USER, --login USER
-                            log in USER.
+                            log in USER
       -o USER, --logout USER
                             log out USER
       -p, --inlab           show who's in lab (logged in)
       -l, --log             show log file
       -t [N], --top [N]     show top N users by hours spent in lab (default 10)
       -s [USER], --stat [USER]
-                            show stats for USER or for eveyone
+                            show stats for USER or for everyone
       -a, --admin           enter admin mode
 
 ## NOTES
