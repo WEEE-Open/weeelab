@@ -266,9 +266,8 @@ def login(username: str, users: map):
 	else:
 		curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 		login_string = "[{date}] [----------------] [INLAB] <{name}>\n".format(date=curr_time, name=username)
-		log_file = open(LOG_FILENAME, "a")
-		log_file.write(login_string)
-		log_file.close()
+		with open(LOG_FILENAME, "a") as log_file:
+			log_file.write(login_string)
 
 		store_log_to(LOG_FILENAME, BACKUP_PATH)
 
