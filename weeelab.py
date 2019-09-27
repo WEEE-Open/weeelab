@@ -35,12 +35,13 @@ from datetime import datetime
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
 
-VERSION = "2.0"
+VERSION = "3.0"
 PROGRAM_NAME = __file__.split('/')[-1]
 
 HOST_NAME = gethostname()
 HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
+MAX_WORK_DONE = 2000
 LOG_FILENAME = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/log.txt"
 USERS_PATH = "/home/" + HOST_USER + "/ownCloud/Weeelab/users.json"
 BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/weeeopen/" + PROGRAM_NAME.capitalize() + "/"
@@ -299,11 +300,11 @@ def logout(username: str, users: map):
 def ask_work_done():
 	try:
 		workdone = input(HOST_NAME + ": What have you done?\n:: ")
-		while len(workdone) > 128:
+		while len(workdone) > MAX_WORK_DONE:
 			print(HOST_NAME + ": I didn't ask you the story of your life!")
 			workdone = input(HOST_NAME + ": What have you done? [BRIEFLY]\n:: ")
 	except KeyboardInterrupt:
-		print(HOST_NAME + ": Logout cancelled by keboard interrupt")
+		print(HOST_NAME + ": Logout cancelled by keyboard interrupt")
 		secure_exit(5)
 		return None  # Just prevents PyCharm from complaining
 	return workdone
