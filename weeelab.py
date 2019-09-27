@@ -123,15 +123,15 @@ def get_user(username: str) -> User:
 		)
 	del matricolized
 
-	for the_filter in filters:
-		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
-		conn.protocol_version = ldap.VERSION3
-		conn.start_tls_s()
-		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
-		if conn is None:
-			print(HOST_NAME + ": Error connecting to LDAP server :(")
-			secure_exit(38)
+	conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
+	conn.protocol_version = ldap.VERSION3
+	conn.start_tls_s()
+	conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
+	if conn is None:
+		print(HOST_NAME + ": Error connecting to LDAP server :(")
+		secure_exit(38)
 
+	for the_filter in filters:
 		result = conn.search_s(LDAP_TREE, ldap.SCOPE_SUBTREE, the_filter, (
 			'uid',
 			'cn',
