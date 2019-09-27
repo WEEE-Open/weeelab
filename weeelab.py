@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
-import json
 import argparse
+import ldap
 # For the copyright string in --help
 from argparse import RawDescriptionHelpFormatter
 from shutil import copy2
@@ -38,13 +38,26 @@ COLOR_NATIVE = "\033[m"
 VERSION = "3.0"
 PROGRAM_NAME = __file__.split('/')[-1]
 
+LDAP_SERVER = "ldap.example.com"
+LDAP_BIND_DN = "cn=something,dc=example,dc=com"
+LDAP_PASSWORD = "foo"
+LDAP_TREE = "ou=People,dc=example,dc=com"
+
 HOST_NAME = gethostname()
 HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
 MAX_WORK_DONE = 2000
 LOG_FILENAME = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/log.txt"
-USERS_PATH = "/home/" + HOST_USER + "/ownCloud/Weeelab/users.json"
 BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/weeeopen/" + PROGRAM_NAME.capitalize() + "/"
+
+
+# A perfect candidate for dataclasses... which may not be available on an old Python version.
+# So no dataclasses.
+class User:
+	def __init__(self, username: str, full_name: str, first_name: str):
+		self.username = username
+		self.full_name = full_name
+		self.first_name = first_name
 
 
 def secure_exit(return_value=0):
@@ -86,51 +99,57 @@ def check_hour(input_hour: str) -> bool:
 	return True
 
 
-def get_normalized_username(username: str, users: map) -> str:
-	"""
-	Normalize user name using the
+def matricolize(username: str):
+	if username.isdigit():
+		return f"s{username}"
+	if username[1:].isdigit():
+		if username[0] in ('s', 'S', 'd', 'D'):
+			return username
+	return None
 
-	:param users: JSON file as map
-	:param username: Supplied username, to search and normalize
-	:return: normalized username
-	"""
+
+def get_user(username: str) -> User:
 	found = False
-	username_lower = username.lower()
+	ambiguous = False
+	matricolized = matricolize(username)
+	if matricolized is None:
+		filters = (
+			f"(&(objectClass=weeeOpenPerson)(uid={username})(!(nsaccountlock=true)))",
+			f"(&(objectClass=weeeOpenPerson)(weeelabnickname={username})(!(nsaccountlock=true)))"
+		)
+	else:
+		filters = (
+			f"(&(objectClass=weeeOpenPerson)(schacpersonaluniquecode={matricolized})(!(nsaccountlock=true)))",
+		)
+	del matricolized
 
-	# Map lookup should be pretty fast, so let's optimize for the easy case...
-	if username_lower in users:
-		return username_lower
+	for the_filter in filters:
+		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
+		conn.protocol_version = ldap.VERSION3
+		conn.start_tls_s()
+		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
+		if conn is None:
+			print(HOST_NAME + ": Error connecting to LDAP server :(")
+			secure_exit(38)
 
-	# Note that an username could contain uppercase characters, so we can't skip checking that...
-	for key in users:
-		entry = users[key]
+		result = conn.search_s(LDAP_TREE, ldap.SCOPE_SUBTREE, the_filter, (
+			'uid',
+			'cn',
+			'givenname'
+		))
+		if len(result) > 1:
+			ambiguous = True
+		if len(result) == 1:
+			attr = result[0][1]
+			return User(attr['uid'][0].decode(), attr['cn'][0].decode(), attr['givenname'][0].decode())
+	conn.unbind_s()
 
-		if username_lower == str(entry['username']).lower():
-			found = True
-			username = key
-			break
-
-		if 'serial' in entry:
-			if username_lower == str(entry['serial']).lower():
-				found = True
-				username = key
-				break
-
-		if 'nicknames' in entry:
-			for nick in entry['nicknames']:
-				if username_lower == nick.lower():
-					# Break inner loop only
-					found = True
-					break
-			if found:
-				# Break outer loop
-				username = key
-				break
-
+	if ambiguous:
+		print(HOST_NAME + ": Multiple accounts found for that username/matricola/nickname, try with another one.")
+		secure_exit(2)
 	if not found:
 		print(HOST_NAME + ": Username not recognized. Maybe you misspelled it or you're an intruder.")
 		secure_exit(2)
-	return username
 
 
 def is_logged_in(username: str) -> bool:
@@ -148,16 +167,6 @@ def is_logged_in(username: str) -> bool:
 			break
 	log_file.close()
 	return logged
-
-
-def name_pretty_print(entry: dict) -> str:
-	"""
-	Pretty-print name from users file
-
-	:param entry: JSON file entry as dict
-	:return: Name Surname
-	"""
-	return entry['name'] + " " + entry['surname']
 
 
 def is_empty(input_file) -> bool:
@@ -183,36 +192,6 @@ def ensure_log_file():
 		else:
 			print(HOST_NAME + ": cannot find directory {}".format(os.path.dirname(LOG_FILENAME)))
 			secure_exit(1)
-
-
-def get_users_file() -> map:
-	"""
-	Get users from the users file.
-	"""
-	try:
-		users_file = open(USERS_PATH)
-	except FileNotFoundError:
-		print(HOST_NAME + ": users list not found in {}".format(USERS_PATH))
-		secure_exit(2)
-		return {}  # Just prevents PyCharm from complaining
-
-	try:
-		users_list = json.loads(users_file.read())
-	except ValueError:
-		print(HOST_NAME + ": cannot parse users list {}, syntax error".format(USERS_PATH))
-		secure_exit(2)
-		return {}  # Just prevents PyCharm from complaining
-	finally:
-		users_file.close()
-
-	users_map = {}
-	for entry in users_list['users']:
-		if 'username' not in entry:
-			print(HOST_NAME + ": error reading JSON file, missing username for entry:\n{}".format(str(entry)))
-			secure_exit(2)
-		users_map[entry['username']] = entry
-
-	return users_map
 
 
 def store_log_to(filename, destination):
@@ -253,17 +232,19 @@ def create_backup_if_necessary():
 	log_file.close()
 
 
-def login(username: str, users: map):
+def login(username: str):
 	"""
 	Log in. Add the line in the file. Do it.
 
 	:param username: User-supplied username
-	:param users: Users JSON as a map
 	"""
-	username = get_normalized_username(username, users)
+
+	user = get_user(username)
+	username = user.username
+	pretty_name = user.full_name
 
 	if is_logged_in(username):
-		print(HOST_NAME + ": {}, you're already logged in.".format(name_pretty_print(users[username])))
+		print(HOST_NAME + f": {pretty_name}, you're already logged in.")
 	else:
 		curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 		login_string = "[{date}] [----------------] [INLAB] <{name}>\n".format(date=curr_time, name=username)
@@ -272,17 +253,20 @@ def login(username: str, users: map):
 
 		store_log_to(LOG_FILENAME, BACKUP_PATH)
 
-		print(HOST_NAME + ": Login successful! Hello {}!".format(name_pretty_print(users[username])))
+		print(HOST_NAME + f": Login successful! Hello {pretty_name}!")
 
 
-def logout(username: str, users: map):
+def logout(username: str):
 	"""
 	Log out.
 
 	:param username: User-supplied username
-	:param users: Users JSON as a map
 	"""
-	username = get_normalized_username(username, users)
+	# TODO: a call to the server can be avoided if the username is found as INLAB in the log...
+	user = get_user(username)
+	username = user.username
+	pretty_name = user.full_name
+
 	if not is_logged_in(username):
 		print(HOST_NAME + ": you aren't in lab! Did you forget to log in?")
 		secure_exit(3)
@@ -291,7 +275,7 @@ def logout(username: str, users: map):
 	workdone = ask_work_done()
 
 	if write_logout(username, curr_time, workdone):
-		print(HOST_NAME + ": Logout successful! Bye {}!".format(name_pretty_print(users[username])))
+		print(HOST_NAME + f": Logout successful! Bye {pretty_name}!")
 	else:
 		print(HOST_NAME + ": Logout failed")
 		secure_exit(3)
@@ -313,8 +297,6 @@ def ask_work_done():
 def work_time(timein, timeout) -> str:
 	"""
 	Returns the time spent in lab formatted as HH:MM
-
-	TODO: something more robust than manual time math...
 	"""
 	li = (int(timein[:2]) * 60) + int(timein[3:5])
 	lo = (int(timeout[:2]) * 60) + int(timeout[3:5])
@@ -361,10 +343,9 @@ def write_logout(username, curr_time, workdone) -> bool:
 
 
 # logout by passing manually date and time
-def manual_logout(users: map):
+def manual_logout():
 	sys.stdout.write(COLOR_RED)
-	tmp_usr = input("ADMIN--> insert username: ")
-	username = get_normalized_username(tmp_usr, users)
+	username = input("ADMIN--> insert username: ")
 
 	date = input("ADMIN--> insert date (gg/mm/aaaa): ")
 	if not check_date(date):
@@ -398,16 +379,15 @@ def logfile():
 	log_file.close()
 
 
-def inlab(users: map):
+def inlab():
 	count = 0
-	curr_day = datetime.now().strftime("%d/%m/%Y")
 	print(HOST_NAME + ": Reading log file...\n")
 	log_file = open(LOG_FILENAME, "r")
 	for line in log_file:
-		if ("INLAB" in line) and (curr_day in line):
+		if "INLAB" in line:
 			count += 1
 			username = line[47:line.rfind(">")]
-			print("> " + name_pretty_print(users[username]))
+			print("> " + username)
 	log_file.close()
 
 	if count == 0:
@@ -429,54 +409,9 @@ def tot_work_time(username):
 	return time_spent
 
 
-def stat(users: map, username):
-	"""
-	Get stats or get rekt
-
-	:param users: Users JSON as a map
-	:param username: User-supplied username, or None to compute all stats
-	"""
-	print(HOST_NAME + ": Computing stats...\n")
-	curr_month = datetime.now().strftime(" [%B %Y]")
-
-	# Compute stats for all users (Extremely stupid algorithm, but works fine)
-	if username is None:
-		for username in users:
-			time = tot_work_time(username)
-			if time == 0:
-				continue
-			# for some reasons line.split(" ") gave problems, so it's best to use line.split()
-			print("[+]     Name: " + name_pretty_print(users[username]))
-			print("[+] WorkTime: " + time_conv(time) + curr_month + "\n")
-	else:
-		username = get_normalized_username(username, users)
-		print("[+]     Name: " + name_pretty_print(users[username]))
-		print("[+] WorkTime: " + time_conv(tot_work_time(username)) + curr_month)
-
-
 # Convert minutes in a formatted string
 def time_conv(minutes):
 	return str(int(minutes / 60)) + " h " + str(int(minutes % 60)) + " m"
-
-
-# Print users list ordered by most active first.
-def top(length: int, users: map):
-	top_list = []
-
-	# Computing total work time for each member
-	for username in users:
-		time = tot_work_time(username)
-		if time == 0:
-			continue
-		top_list.append((time, username))
-
-	top_list.sort(reverse=True)
-
-	print(HOST_NAME + ": Hall of Fame (top {})\n".format(str(length)))
-	pos = 1
-	for i in range(0, min(length, len(top_list))):
-		print("[" + str(pos).zfill(2) + "] " + name_pretty_print(users[top_list[i][1]]))
-		pos += 1
 
 
 def main(args_dict):
@@ -491,28 +426,18 @@ def main(args_dict):
 		print(HOST_NAME + ": DEBUG_MODE enabled")
 
 	ensure_log_file()
-	users = get_users_file()
 	create_backup_if_necessary()
 
 	if args_dict.get('login') is not None:
-		login(args_dict.get('login')[0], users)
+		login(args_dict.get('login')[0])
 	elif args_dict.get('logout') is not None:
-		logout(args_dict.get('logout')[0], users)
-	elif args_dict.get('stat') is not None:
-		username = args_dict.get('stat')
-		if username is True:
-			#  Horrible hack but it works.
-			stat(users, None)
-		else:
-			stat(users, args_dict.get('stat'))
+		logout(args_dict.get('logout')[0])
 	elif args_dict.get('inlab') is True:
-		inlab(users)
+		inlab()
 	elif args_dict.get('log') is True:
 		logfile()
-	elif args_dict.get('top') is not None:
-		top(args_dict.get('top'), users)
 	elif args_dict.get('admin') is True:
-		manual_logout(users)
+		manual_logout()
 	else:
 		print("WTF?")
 		exit(69)
@@ -538,10 +463,6 @@ if __name__ == '__main__':
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
-	group.add_argument('-t', '--top', type=int, nargs='?', metavar='N', const=10,
-	                   help='show top N users by hours spent in lab (default 10)')
-	group.add_argument('-s', '--stat', type=str, nargs='?', const=True, metavar='USER',
-	                   help='show stats for USER or for everyone')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
 	args = parser.parse_args()
 	main(vars(args))
