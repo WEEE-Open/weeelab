@@ -234,16 +234,22 @@ def create_backup_if_necessary():
 	log_file.close()
 
 
-def login(username: str):
+def login(username: str, use_ldap: bool):
 	"""
 	Log in. Add the line in the file. Do it.
 
 	:param username: User-supplied username
 	"""
 
-	user = get_user(username)
-	username = user.username
-	pretty_name = user.full_name
+	if use_ldap:
+		user = get_user(username)
+		username = user.username
+		pretty_name = user.full_name
+	else:
+		print(COLOR_RED)
+		print("WARNING: bypassing LDAP lookup, make sure that this is the correct username and not an alias")
+		print(COLOR_NATIVE)
+		pretty_name = username
 
 	if is_logged_in(username):
 		print(HOST_NAME + f": {pretty_name}, you're already logged in.")
@@ -258,20 +264,31 @@ def login(username: str):
 		print(HOST_NAME + f": Login successful! Hello {pretty_name}!")
 
 
-def logout(username: str):
+def logout(username: str, use_ldap: bool):
 	"""
 	Log out.
 
 	:param username: User-supplied username
 	"""
-	# TODO: a call to the server can be avoided if the username is found as INLAB in the log...
-	user = get_user(username)
-	username = user.username
-	pretty_name = user.full_name
+	if not use_ldap:
+		print(COLOR_RED)
+		print("WARNING: bypassing LDAP lookup, make sure that this is the correct username and not an alias")
+		print(COLOR_NATIVE)
 
-	if not is_logged_in(username):
-		print(HOST_NAME + ": you aren't in lab! Did you forget to log in?")
-		secure_exit(3)
+	if is_logged_in(username):
+		# Using username, and found
+		pretty_name = username
+	else:
+		# Not found, is it an alias?
+		if use_ldap:
+			# Grab the real username
+			user = get_user(username)
+			username = user.username
+			pretty_name = user.full_name
+		if not use_ldap or not is_logged_in(username):
+			# Cannot get it from LDAP or still not logged in
+			print(HOST_NAME + ": you aren't in lab! Did you forget to log in?")
+			secure_exit(3)
 
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 	workdone = ask_work_done()
@@ -431,9 +448,9 @@ def main(args_dict):
 	create_backup_if_necessary()
 
 	if args_dict.get('login') is not None:
-		login(args_dict.get('login')[0])
+		login(args_dict.get('login')[0], args_dict.get('ldap'))
 	elif args_dict.get('logout') is not None:
-		logout(args_dict.get('logout')[0])
+		logout(args_dict.get('logout')[0], args_dict.get('ldap'))
 	elif args_dict.get('inlab') is True:
 		inlab()
 	elif args_dict.get('log') is True:
@@ -466,5 +483,8 @@ if __name__ == '__main__':
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
+	parser.add_argument('--ldap', dest='ldap', action='store_true')
+	parser.add_argument('--no-ldap', dest='ldap', action='store_false')
+	parser.set_defaults(feature=True)
 	args = parser.parse_args()
 	main(vars(args))
