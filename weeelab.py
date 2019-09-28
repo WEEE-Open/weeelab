@@ -22,6 +22,7 @@ import os
 import sys
 import argparse
 import ldap
+from ldap.filter import escape_filter_chars
 # For the copyright string in --help
 from argparse import RawDescriptionHelpFormatter
 from shutil import copy2
@@ -112,6 +113,7 @@ def get_user(username: str) -> User:
 	found = False
 	ambiguous = False
 	matricolized = matricolize(username)
+	username = escape_filter_chars(username)
 	if matricolized is None:
 		filters = (
 			f"(&(objectClass=weeeOpenPerson)(uid={username})(!(nsaccountlock=true)))",
