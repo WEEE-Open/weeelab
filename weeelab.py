@@ -21,8 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import sys
 import argparse
-import ldap
 from ldap.filter import escape_filter_chars
+import ldap
 # For the copyright string in --help
 from argparse import RawDescriptionHelpFormatter
 from shutil import copy2
@@ -47,7 +47,7 @@ HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
 MAX_WORK_DONE = 2000
 LOG_FILENAME = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/log.txt"
-BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/weeeopen/" + PROGRAM_NAME.capitalize() + "/"
+BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
 
 # A perfect candidate for dataclasses... which may not be available on an old Python version.
@@ -123,10 +123,16 @@ def get_user(username: str) -> User:
 		)
 	del matricolized
 
-	conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
-	conn.protocol_version = ldap.VERSION3
-	conn.start_tls_s()
-	conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
+	try:
+		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
+		conn.protocol_version = ldap.VERSION3
+		conn.start_tls_s()
+		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
+	except ldap.SERVER_DOWN:
+		print(f"Cannot connect to LDAP server {LDAP_SERVER}")
+		secure_exit(38)
+		# noinspection PyTypeChecker
+		return None  # Stops complaints from the IDE
 	if conn is None:
 		print(f"{PROGRAM_NAME}: Error connecting to LDAP server :(")
 		secure_exit(38)
@@ -396,7 +402,7 @@ def logfile():
 	print(f"{PROGRAM_NAME}: Reading log file...\n")
 	log_file = open(LOG_FILENAME, "r")
 	for line in log_file:
-		print(line)
+		print(line, end='')
 	log_file.close()
 
 
@@ -445,6 +451,8 @@ def main(args_dict):
 		global DEBUG_MODE
 		DEBUG_MODE = True
 		print(f"{PROGRAM_NAME}: DEBUG_MODE enabled")
+		global LOG_FILENAME
+		LOG_FILENAME = "./debug/log.txt"
 
 	ensure_log_file()
 	create_backup_if_necessary()
@@ -467,7 +475,7 @@ def main(args_dict):
 # manual_logout()
 # sys.stdout.write(COLOR_NATIVE)
 
-if __name__ == '__main__':
+def argparse_this():
 	parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description="""
 WEEELAB v{} - Log management module for garbaging paper sign sheet.
 Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio) and others
@@ -485,9 +493,13 @@ to redistribute it under the terms of the GNU GPLv3.
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
-	parser.add_mutually_exclusive_group(required=False)
-	parser.add_argument('--ldap', dest='ldap', action='store_true')
-	parser.add_argument('--no-ldap', dest='ldap', action='store_false')
-	parser.set_defaults(ldap=True)
+	ldap_group_argparse_thing = parser.add_mutually_exclusive_group(required=False)
+	ldap_group_argparse_thing.add_argument('--ldap', dest='ldap', action='store_true')
+	ldap_group_argparse_thing.add_argument('--no-ldap', dest='ldap', action='store_false')
+	ldap_group_argparse_thing.set_defaults(ldap=True)
 	args = parser.parse_args()
-	main(vars(args))
+	return args
+
+
+if __name__ == '__main__':
+	main(vars(argparse_this()))
