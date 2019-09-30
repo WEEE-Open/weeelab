@@ -29,7 +29,6 @@ from shutil import copy2
 # Allows using backspace and arrow keys in input
 # noinspection PyUnresolvedReferences
 import readline
-from socket import gethostname
 from getpass import getuser
 from datetime import datetime
 
@@ -44,7 +43,6 @@ LDAP_BIND_DN = "cn=something,dc=example,dc=com"
 LDAP_PASSWORD = "foo"
 LDAP_TREE = "ou=People,dc=example,dc=com"
 
-HOST_NAME = gethostname()
 HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
 MAX_WORK_DONE = 2000
@@ -130,7 +128,7 @@ def get_user(username: str) -> User:
 	conn.start_tls_s()
 	conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
 	if conn is None:
-		print(HOST_NAME + ": Error connecting to LDAP server :(")
+		print(f"{PROGRAM_NAME}: Error connecting to LDAP server :(")
 		secure_exit(38)
 
 	for the_filter in filters:
@@ -147,10 +145,10 @@ def get_user(username: str) -> User:
 	conn.unbind_s()
 
 	if ambiguous:
-		print(HOST_NAME + ": Multiple accounts found for that username/matricola/nickname, try with another one.")
+		print(f"{PROGRAM_NAME}: Multiple accounts found for that username/matricola/nickname, try with another one.")
 		secure_exit(2)
 	if not found:
-		print(HOST_NAME + ": Username not recognized. Maybe you misspelled it or you're an intruder.")
+		print(f"{PROGRAM_NAME}: Username not recognized. Maybe you misspelled it or you're an intruder.")
 		secure_exit(2)
 
 
@@ -189,10 +187,10 @@ def is_empty(input_file) -> bool:
 def ensure_log_file():
 	if os.path.exists(LOG_FILENAME) is False:
 		if os.path.isdir(os.path.dirname(LOG_FILENAME)):
-			print(HOST_NAME + ": creating empty log.txt")
+			print(f"{PROGRAM_NAME}: creating empty log.txt")
 			open(LOG_FILENAME, "a").close()
 		else:
-			print(HOST_NAME + ": cannot find directory {}".format(os.path.dirname(LOG_FILENAME)))
+			print(f"{PROGRAM_NAME}: cannot find directory {os.path.dirname(LOG_FILENAME)}")
 			secure_exit(1)
 
 
@@ -204,7 +202,7 @@ def store_log_to(filename, destination):
 	:param destination: Path to destination file or directory
 	"""
 	if DEBUG_MODE is True:
-		print(HOST_NAME + ": DEBUG_MODE, skipped copying {} to {}".format(os.path.basename(filename), destination))
+		print(f"{PROGRAM_NAME}: DEBUG_MODE, skipped copying {os.path.basename(filename)} to {destination}")
 	else:
 		copy2(filename, destination)
 
@@ -224,13 +222,13 @@ def create_backup_if_necessary():
 		# If the inexorable passage of time has been perceived by this program, too...
 		if (curr_month > last_month) or (curr_year > last_year):
 			stored_log_filename = LOG_FILENAME.rsplit('.', 1)[0] + last_date.strftime("%Y%m") + ".txt"
-			print(HOST_NAME + ": Backing up log file to {}".format(os.path.basename(stored_log_filename)))
+			print(f"{PROGRAM_NAME}: Backing up log file to {os.path.basename(stored_log_filename)}")
 			os.rename(LOG_FILENAME, stored_log_filename)
 			store_log_to(stored_log_filename, BACKUP_PATH)
-			print(HOST_NAME + ": Done!")
+			print(f"{PROGRAM_NAME}: Done!")
 
 			open(LOG_FILENAME, "a").close()
-			print(HOST_NAME + ": New log file was created.")
+			print(f"{PROGRAM_NAME}: New log file was created.")
 	log_file.close()
 
 
@@ -238,6 +236,7 @@ def login(username: str, use_ldap: bool):
 	"""
 	Log in. Add the line in the file. Do it.
 
+	:param use_ldap: Connect to remote LDAP server or blindly trust the input
 	:param username: User-supplied username
 	"""
 
@@ -252,22 +251,23 @@ def login(username: str, use_ldap: bool):
 		pretty_name = username
 
 	if is_logged_in(username):
-		print(HOST_NAME + f": {pretty_name}, you're already logged in.")
+		print(f"{PROGRAM_NAME}: {pretty_name}, you're already logged in.")
 	else:
 		curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
-		login_string = "[{date}] [----------------] [INLAB] <{name}>\n".format(date=curr_time, name=username)
+		login_string = f"[{curr_time}] [----------------] [INLAB] <{username}>\n"
 		with open(LOG_FILENAME, "a") as log_file:
 			log_file.write(login_string)
 
 		store_log_to(LOG_FILENAME, BACKUP_PATH)
 
-		print(HOST_NAME + f": Login successful! Hello {pretty_name}!")
+		print(f"{PROGRAM_NAME}: Login successful! Hello {pretty_name}!")
 
 
 def logout(username: str, use_ldap: bool):
 	"""
 	Log out.
 
+	:param use_ldap: Connect to remote LDAP server or blindly trust the input
 	:param username: User-supplied username
 	"""
 	if not use_ldap:
@@ -287,27 +287,29 @@ def logout(username: str, use_ldap: bool):
 			pretty_name = user.full_name
 		if not use_ldap or not is_logged_in(username):
 			# Cannot get it from LDAP or still not logged in
-			print(HOST_NAME + ": you aren't in lab! Did you forget to log in?")
+			print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
 			secure_exit(3)
 
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 	workdone = ask_work_done()
 
 	if write_logout(username, curr_time, workdone):
-		print(HOST_NAME + f": Logout successful! Bye {pretty_name}!")
+		# It's bound, come on...
+		# noinspection PyUnboundLocalVariable
+		print(f"{PROGRAM_NAME}: Logout successful! Bye {pretty_name}!")
 	else:
-		print(HOST_NAME + ": Logout failed")
+		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
 
 
 def ask_work_done():
 	try:
-		workdone = input(HOST_NAME + ": What have you done?\n:: ")
+		workdone = input(f"{PROGRAM_NAME}: What have you done?\n:: ")
 		while len(workdone) > MAX_WORK_DONE:
-			print(HOST_NAME + ": I didn't ask you the story of your life!")
-			workdone = input(HOST_NAME + ": What have you done? [BRIEFLY]\n:: ")
+			print(f"{PROGRAM_NAME}: I didn't ask you the story of your life!")
+			workdone = input(f"{PROGRAM_NAME}: What have you done? [BRIEFLY]\n:: ")
 	except KeyboardInterrupt:
-		print(HOST_NAME + ": Logout cancelled by keyboard interrupt")
+		print(f"{PROGRAM_NAME}: Logout cancelled by keyboard interrupt")
 		secure_exit(5)
 		return None  # Just prevents PyCharm from complaining
 	return workdone
@@ -391,7 +393,7 @@ def manual_logout():
 
 
 def logfile():
-	print(HOST_NAME + ": Reading log file...\n")
+	print(f"{PROGRAM_NAME}: Reading log file...\n")
 	log_file = open(LOG_FILENAME, "r")
 	for line in log_file:
 		print(line)
@@ -400,7 +402,7 @@ def logfile():
 
 def inlab():
 	count = 0
-	print(HOST_NAME + ": Reading log file...\n")
+	print(f"{PROGRAM_NAME}: Reading log file...\n")
 	log_file = open(LOG_FILENAME, "r")
 	for line in log_file:
 		if "INLAB" in line:
@@ -410,11 +412,11 @@ def inlab():
 	log_file.close()
 
 	if count == 0:
-		print(HOST_NAME + ": Nobody is in lab right now.")
+		print(f"{PROGRAM_NAME}: Nobody is in lab right now.")
 	elif count == 1:
-		print(HOST_NAME + ": There is one student in lab right now.")
+		print(f"{PROGRAM_NAME}: There is one student in lab right now.")
 	else:
-		print(HOST_NAME + ": There are {c} students in lab right now.".format(c=count))
+		print(f"{PROGRAM_NAME}: There are {count} students in lab right now.")
 
 
 # Returns total work time in minutes
@@ -442,7 +444,7 @@ def main(args_dict):
 	if args_dict.get('debug') is True:
 		global DEBUG_MODE
 		DEBUG_MODE = True
-		print(HOST_NAME + ": DEBUG_MODE enabled")
+		print(f"{PROGRAM_NAME}: DEBUG_MODE enabled")
 
 	ensure_log_file()
 	create_backup_if_necessary()
@@ -467,13 +469,13 @@ def main(args_dict):
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description="""
-	WEEELAB v{} - Log management module for garbaging paper sign sheet.
-	Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio)
-	Copyright (C) 2017-∞ WEEE Open
+WEEELAB v{} - Log management module for garbaging paper sign sheet.
+Author: Stefano Enrico Mendola (aka Hyd3L, STE col teschio) and others
+Copyright (C) 2017-∞ WEEE Open
 
-	This program comes with ABSOLUTELY NO WARRANTY.
-	Since this is a free software, you are welcome
-	to redistribute it under the terms of the GNU GPLv3.
+This program comes with ABSOLUTELY NO WARRANTY.
+Since this is a free software, you are welcome
+to redistribute it under the terms of the GNU GPLv3.
 	""".format(VERSION))
 	# Add commands here, like any normal person instead of hand-coding a parser (or at least make it a LALR(1) parser)
 	parser.add_argument('-d', '--debug', action='store_true', help='enable debug mode (don\'t copy files to ownCloud)')
