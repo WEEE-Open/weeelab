@@ -124,6 +124,7 @@ def get_user(username: str) -> User:
 	del matricolized
 
 	try:
+		print(f"Asking {LDAP_SERVER} for info...")
 		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
 		conn.protocol_version = ldap.VERSION3
 		conn.start_tls_s()
