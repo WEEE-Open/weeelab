@@ -35,7 +35,7 @@ from datetime import datetime
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
 
-VERSION = "3.0"
+VERSION = "3.1"
 PROGRAM_NAME = __file__.split('/')[-1]
 
 LDAP_SERVER = "ldap.example.com"
@@ -46,8 +46,9 @@ LDAP_TREE = "ou=People,dc=example,dc=com"
 HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
 MAX_WORK_DONE = 2000
-LOG_FILENAME = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/log.txt"
-BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
+LOG_PATH = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/"
+LOG_FILENAME = LOG_PATH + "log.txt"
+# BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
 
 # A perfect candidate for dataclasses... which may not be available on an old Python version.
@@ -228,10 +229,11 @@ def create_backup_if_necessary():
 
 		# If the inexorable passage of time has been perceived by this program, too...
 		if (curr_month > last_month) or (curr_year > last_year):
+			# log.txt -> log201901.txt, foo.txt -> foo201901.txt, etc...
 			stored_log_filename = LOG_FILENAME.rsplit('.', 1)[0] + last_date.strftime("%Y%m") + ".txt"
 			print(f"{PROGRAM_NAME}: Backing up log file to {os.path.basename(stored_log_filename)}")
 			os.rename(LOG_FILENAME, stored_log_filename)
-			store_log_to(stored_log_filename, BACKUP_PATH)
+			# store_log_to(stored_log_filename, BACKUP_PATH)
 			print(f"{PROGRAM_NAME}: Done!")
 
 			open(LOG_FILENAME, "a").close()
@@ -265,7 +267,7 @@ def login(username: str, use_ldap: bool):
 		with open(LOG_FILENAME, "a") as log_file:
 			log_file.write(login_string)
 
-		store_log_to(LOG_FILENAME, BACKUP_PATH)
+		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
 		print(f"{PROGRAM_NAME}: Login successful! Hello {pretty_name}!")
 
@@ -363,7 +365,7 @@ def write_logout(username, curr_time, workdone) -> bool:
 			log_file.write(line)
 		log_file.close()
 
-		store_log_to(LOG_FILENAME, BACKUP_PATH)
+		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
 		return True
 	else:

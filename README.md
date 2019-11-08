@@ -37,9 +37,5 @@ Open a terminal and type these following commands:
 ## NOTES
 
 - The file `log.txt` is filled by appending new lines.
-- The file `users.json` contains users info. See the example file and avoid spaces in the fields.
-Don't use multiple serial, telegramID or nickname
 - The `login` and `logout` functions now work with serial numbers, telegramID and
 with nicknames as well.
-
-
