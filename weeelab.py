@@ -31,6 +31,7 @@ from shutil import copy2
 import readline
 from getpass import getuser
 from datetime import datetime
+from time import sleep
 
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
@@ -356,10 +357,21 @@ def write_logout(username, curr_time, workdone) -> bool:
 			log_list.append(line)  # Store everything in the list
 
 	if found:
+		# add .lock file during writing process if there isn't one, wait until it's removed, then re-add it
+		while True:
+			try:
+				with open(LOG_FILENAME+'.lock', 'x'):
+					break
+			except FileExistsError:
+				sleep(.5)
+
 		# Writing everything to log file
 		with open(LOG_FILENAME, "w") as log_file:
 			for line in log_list:
 				log_file.write(line)
+
+		# remove .lock file
+		os.remove(LOG_FILENAME+'.lock')
 
 		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
