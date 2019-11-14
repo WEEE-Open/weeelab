@@ -309,6 +309,9 @@ def logout(username: str, use_ldap: bool):
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
 
+def message_logout(logout_message: str, tg_chat_id: str, is_admin: bool):
+	pass
+	# TODO: implement this function
 
 def ask_work_done():
 	try:
@@ -473,6 +476,8 @@ def main(args_dict):
 		logfile()
 	elif args_dict.get('admin') is True:
 		manual_logout()
+	elif args_dict.get('message') is True:
+		message_logout()
 	else:
 		print("WTF?")
 		exit(69)
@@ -496,6 +501,7 @@ to redistribute it under the terms of the GNU GPLv3.
 	group = parser.add_argument_group('Actions').add_mutually_exclusive_group(required=True)
 	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER')
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
+	group.add_argument('-m', '--message', type=str, nargs=1, metavar='MESSAGE', help='logout message')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
