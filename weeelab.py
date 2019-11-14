@@ -363,9 +363,7 @@ def write_logout(username, curr_time, workdone) -> bool:
 
 		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
-		return True
-	else:
-		return False
+	return found
 
 
 # logout by passing manually date and time
