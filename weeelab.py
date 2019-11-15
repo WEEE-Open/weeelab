@@ -501,7 +501,7 @@ to redistribute it under the terms of the GNU GPLv3.
 	group = parser.add_argument_group('Actions').add_mutually_exclusive_group(required=True)
 	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER')
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
-	group.add_argument('-m', '--message', type=str, nargs=1, metavar='MESSAGE', help='logout message')
+	parser.add_argument('-m', '--message', type=str, nargs=1, metavar='MESSAGE', help='logout message')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
@@ -509,6 +509,9 @@ to redistribute it under the terms of the GNU GPLv3.
 	ldap_group_argparse_thing.add_argument('--ldap', dest='ldap', action='store_true')
 	ldap_group_argparse_thing.add_argument('--no-ldap', dest='ldap', action='store_false')
 	ldap_group_argparse_thing.set_defaults(ldap=True)
+	if ('-m' in sys.argv or '--message' in sys.argv) and ('-o' not in sys.argv and '--logout' not in sys.argv):
+		parser.error("You can't set a logout message alone or for other commands other than logout.\n"
+					 "You can use -m or its equivalent --message only if you also use the -o or --logout parameter.")
 	args = parser.parse_args()
 	return args
 
