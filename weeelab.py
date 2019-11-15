@@ -309,9 +309,15 @@ def logout(username: str, use_ldap: bool):
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
 
-def message_logout(logout_message: str, tg_chat_id: str, is_admin: bool):
-	pass
-	# TODO: implement this function
+def message_logout(username: str, logout_message: str):
+	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
+	if write_logout(username, curr_time, logout_message):
+		# It's bound, come on...
+		# noinspection PyUnboundLocalVariable
+		print(f"{PROGRAM_NAME}: Logout successful! Bye {username}!")
+	else:
+		print(f"{PROGRAM_NAME}: Logout failed")
+		secure_exit(3)
 
 def ask_work_done():
 	try:
@@ -477,7 +483,7 @@ def main(args_dict):
 	elif args_dict.get('admin') is True:
 		manual_logout()
 	elif args_dict.get('message') is True:
-		message_logout()
+		message_logout(args_dict.get('logout')[0], args_dict.get('message')[0])
 	else:
 		print("WTF?")
 		exit(69)
