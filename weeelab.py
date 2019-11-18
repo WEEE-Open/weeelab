@@ -31,6 +31,7 @@ from shutil import copy2
 import readline
 from getpass import getuser
 from datetime import datetime
+from time import sleep
 
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
@@ -168,12 +169,11 @@ def is_logged_in(username: str) -> bool:
 	:return:
 	"""
 	logged = False
-	log_file = open(LOG_FILENAME, "r")
-	for line in log_file:
-		if ("INLAB" in line) and (username in line):
-			logged = True
-			break
-	log_file.close()
+	with open(LOG_FILENAME, "r") as log_file:
+		for line in log_file:
+			if ("INLAB" in line) and (username in line):
+				logged = True
+				break
 	return logged
 
 
@@ -217,28 +217,27 @@ def store_log_to(filename, destination):
 
 def create_backup_if_necessary():
 	# Open master log file
-	log_file = open(LOG_FILENAME, "r")
-	if is_empty(log_file) is False:
-		last_month_year = str(log_file.read())[4:11]
+	with open(LOG_FILENAME, "r") as log_file:
+		if is_empty(log_file) is False:
+			last_month_year = str(log_file.read())[4:11]
 
-		curr_month = int(datetime.now().strftime("%m"))
-		curr_year = int(datetime.now().strftime("%Y"))
-		last_date = datetime.strptime(last_month_year, "%m/%Y")
-		last_month = int(last_date.strftime("%m"))
-		last_year = int(last_date.strftime("%Y"))
+			curr_month = int(datetime.now().strftime("%m"))
+			curr_year = int(datetime.now().strftime("%Y"))
+			last_date = datetime.strptime(last_month_year, "%m/%Y")
+			last_month = int(last_date.strftime("%m"))
+			last_year = int(last_date.strftime("%Y"))
 
-		# If the inexorable passage of time has been perceived by this program, too...
-		if (curr_month > last_month) or (curr_year > last_year):
-			# log.txt -> log201901.txt, foo.txt -> foo201901.txt, etc...
-			stored_log_filename = LOG_FILENAME.rsplit('.', 1)[0] + last_date.strftime("%Y%m") + ".txt"
-			print(f"{PROGRAM_NAME}: Backing up log file to {os.path.basename(stored_log_filename)}")
-			os.rename(LOG_FILENAME, stored_log_filename)
-			# store_log_to(stored_log_filename, BACKUP_PATH)
-			print(f"{PROGRAM_NAME}: Done!")
+			# If the inexorable passage of time has been perceived by this program, too...
+			if (curr_month > last_month) or (curr_year > last_year):
+				# log.txt -> log201901.txt, foo.txt -> foo201901.txt, etc...
+				stored_log_filename = LOG_FILENAME.rsplit('.', 1)[0] + last_date.strftime("%Y%m") + ".txt"
+				print(f"{PROGRAM_NAME}: Backing up log file to {os.path.basename(stored_log_filename)}")
+				os.rename(LOG_FILENAME, stored_log_filename)
+				# store_log_to(stored_log_filename, BACKUP_PATH)
+				print(f"{PROGRAM_NAME}: Done!")
 
-			open(LOG_FILENAME, "a").close()
-			print(f"{PROGRAM_NAME}: New log file was created.")
-	log_file.close()
+				open(LOG_FILENAME, "a").close()
+				print(f"{PROGRAM_NAME}: New log file was created.")
 
 
 def login(username: str, use_ldap: bool):
@@ -310,6 +309,15 @@ def logout(username: str, use_ldap: bool):
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
 
+def message_logout(username: str, logout_message: str):
+	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
+	if write_logout(username, curr_time, logout_message):
+		# It's bound, come on...
+		# noinspection PyUnboundLocalVariable
+		print(f"{PROGRAM_NAME}: Logout successful! Bye {username}!")
+	else:
+		print(f"{PROGRAM_NAME}: Logout failed")
+		secure_exit(3)
 
 def ask_work_done():
 	try:
@@ -342,34 +350,41 @@ def write_logout(username, curr_time, workdone) -> bool:
 	found = False
 
 	log_list = []
-	log_file = open(LOG_FILENAME, "r")
-	# si salva tutto il file nella lista,
-	# se trova la voce che contiene INLAB e username del logout modifica quella stringa
-	for line in log_file:
-		if ("INLAB" in line) and (username in line):
-			found = True
-			login_time = line[12:17]
-			logout_time = curr_time[11:17]
-			line = line.replace("----------------", curr_time)
-			line = line.replace("INLAB", work_time(login_time, logout_time))
-			line = line.replace("\n", "")
+	with open(LOG_FILENAME, "r") as log_file:
+		# si salva tutto il file nella lista,
+		# se trova la voce che contiene INLAB e username del logout modifica quella stringa
+		for line in log_file:
+			if ("INLAB" in line) and (username in line):
+				found = True
+				login_time = line[12:17]
+				logout_time = curr_time[11:17]
+				line = line.replace("----------------", curr_time)
+				line = line.replace("INLAB", work_time(login_time, logout_time))
+				line = line.replace("\n", "")
 
-			line = line + " :: " + workdone + "\n"
-		log_list.append(line)  # Store everything in the list
-	log_file.close()
+				line = line + " :: " + workdone + "\n"
+			log_list.append(line)  # Store everything in the list
 
 	if found:
+		# add .lock file during writing process if there isn't one, wait until it's removed, then re-add it
+		while True:
+			try:
+				with open(LOG_FILENAME+'.lock', 'x'):
+					break
+			except FileExistsError:
+				sleep(.5)
+
 		# Writing everything to log file
-		log_file = open(LOG_FILENAME, "w")
-		for line in log_list:
-			log_file.write(line)
-		log_file.close()
+		with open(LOG_FILENAME, "w") as log_file:
+			for line in log_list:
+				log_file.write(line)
+
+		# remove .lock file
+		os.remove(LOG_FILENAME+'.lock')
 
 		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
-		return True
-	else:
-		return False
+	return found
 
 
 # logout by passing manually date and time
@@ -403,22 +418,20 @@ def manual_logout():
 
 def logfile():
 	print(f"{PROGRAM_NAME}: Reading log file...\n")
-	log_file = open(LOG_FILENAME, "r")
-	for line in log_file:
-		print(line, end='')
-	log_file.close()
+	with open(LOG_FILENAME, "r") as log_file:
+		for line in log_file:
+			print(line, end='')
 
 
 def inlab():
 	count = 0
 	print(f"{PROGRAM_NAME}: Reading log file...\n")
-	log_file = open(LOG_FILENAME, "r")
-	for line in log_file:
-		if "INLAB" in line:
-			count += 1
-			username = line[47:line.rfind(">")]
-			print("> " + username)
-	log_file.close()
+	with open(LOG_FILENAME, "r") as log_file:
+		for line in log_file:
+			if "INLAB" in line:
+				count += 1
+				username = line[47:line.rfind(">")]
+				print("> " + username)
 
 	if count == 0:
 		print(f"{PROGRAM_NAME}: Nobody is in lab right now.")
@@ -431,11 +444,10 @@ def inlab():
 # Returns total work time in minutes
 def tot_work_time(username):
 	time_spent = 0
-	log_file = open(LOG_FILENAME, "r")
-	for line in log_file:
-		if (username in line) and not ("INLAB" in line):
-			time_spent += ((int(line[39:41]) * 60) + int(line[42:44]))
-	log_file.close()
+	with open(LOG_FILENAME, "r") as log_file:
+		for line in log_file:
+			if (username in line) and not ("INLAB" in line):
+				time_spent += ((int(line[39:41]) * 60) + int(line[42:44]))
 	return time_spent
 
 
@@ -470,6 +482,8 @@ def main(args_dict):
 		logfile()
 	elif args_dict.get('admin') is True:
 		manual_logout()
+	elif args_dict.get('message') is True:
+		message_logout(args_dict.get('logout')[0], args_dict.get('message')[0])
 	else:
 		print("WTF?")
 		exit(69)
@@ -493,6 +507,7 @@ to redistribute it under the terms of the GNU GPLv3.
 	group = parser.add_argument_group('Actions').add_mutually_exclusive_group(required=True)
 	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER')
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
+	parser.add_argument('-m', '--message', type=str, nargs=1, metavar='MESSAGE', help='logout message')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
 	group.add_argument('-a', '--admin', action='store_true', help='enter admin mode')
@@ -500,6 +515,9 @@ to redistribute it under the terms of the GNU GPLv3.
 	ldap_group_argparse_thing.add_argument('--ldap', dest='ldap', action='store_true')
 	ldap_group_argparse_thing.add_argument('--no-ldap', dest='ldap', action='store_false')
 	ldap_group_argparse_thing.set_defaults(ldap=True)
+	if ('-m' in sys.argv or '--message' in sys.argv) and ('-o' not in sys.argv and '--logout' not in sys.argv):
+		parser.error("You can't set a logout message alone or for other commands other than logout.\n"
+					 "You can use -m or its equivalent --message only if you also use the -o or --logout parameter.")
 	args = parser.parse_args()
 	return args
 
