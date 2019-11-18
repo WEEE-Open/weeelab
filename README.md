@@ -15,12 +15,16 @@ Open a terminal and type these following commands:
 
 ## COMMAND SYNTAX
 
-    usage: weeelab.py [-h] [-d]
-                      (-i USER | -o USER | -p | -l | -t [N] | -s [USER] | -a)
+    usage: weeelab.py [-h] [-d] [-i USER] [-o USER] [-m MESSAGE] [-p] [-l] [-a]
+                  [--ldap | --no-ldap]
 
     optional arguments:
       -h, --help            show this help message and exit
       -d, --debug           enable debug mode (don't copy files to ownCloud)
+      -m MESSAGE, --message MESSAGE
+                            logout message
+      --ldap
+      --no-ldap
 
     Actions:
       -i USER, --login USER
@@ -29,9 +33,6 @@ Open a terminal and type these following commands:
                             log out USER
       -p, --inlab           show who's in lab (logged in)
       -l, --log             show log file
-      -t [N], --top [N]     show top N users by hours spent in lab (default 10)
-      -s [USER], --stat [USER]
-                            show stats for USER or for everyone
       -a, --admin           enter admin mode
 
 ## NOTES
