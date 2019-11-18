@@ -23,7 +23,7 @@ export LDAP_BIND_DN="cn=something,dc=example,dc=com"
 export LDAP_PASSWORD="foo"
 export LDAP_TREE="ou=People,dc=example,dc=com"
 
-export LOG_PATH="/home/${HOST_USER}/.local/share/${PROGRAM_NAME}/"
+export LOG_PATH="/home/username/.local/share/weeelab_logs/"
 export LOG_FILENAME="${LOG_PATH}log.txt"
 ```
 

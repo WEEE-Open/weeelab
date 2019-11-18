@@ -7,3 +7,4 @@ test.php
 # Python cache
 __pycache__/
 debug/
+.env
