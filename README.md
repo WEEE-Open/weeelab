@@ -9,9 +9,23 @@ The goal of this script is to move to the trash can the paper sign sheet.
 
 Open a terminal and type these following commands:
 
-    git clone https://github.com/weee-open/weeelab
-    cd weeelab
-    sudo cp weeelab.py /bin/weeelab
+```shell script
+git clone https://github.com/weee-open/weeelab
+cd weeelab
+sudo cp weeelab.py /bin/weeelab
+```
+
+Then create a file named `.env` (dot env) and add something like this:
+
+```shell script
+export LDAP_SERVER="ldap.example.com"
+export LDAP_BIND_DN="cn=something,dc=example,dc=com"
+export LDAP_PASSWORD="foo"
+export LDAP_TREE="ou=People,dc=example,dc=com"
+
+export LOG_PATH="/home/${HOST_USER}/.local/share/${PROGRAM_NAME}/"
+export LOG_FILENAME="${LOG_PATH}log.txt"
+```
 
 ## COMMAND SYNTAX
 

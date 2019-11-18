@@ -31,27 +31,30 @@ from getpass import getuser
 from datetime import datetime
 from time import sleep
 from typing import Optional
+from dotenv import load_dotenv
 
 if '--no-ldap' not in sys.argv:
 	from ldap.filter import escape_filter_chars
 	import ldap
 
+load_dotenv()
+
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
 
-VERSION = "3.1"
+VERSION = "3.2"
 PROGRAM_NAME = __file__.split('/')[-1]
-
-LDAP_SERVER = "ldap.example.com"
-LDAP_BIND_DN = "cn=something,dc=example,dc=com"
-LDAP_PASSWORD = "foo"
-LDAP_TREE = "ou=People,dc=example,dc=com"
-
 HOST_USER = getuser()
 DEBUG_MODE = False  # Don't set it here, use -d when running
 MAX_WORK_DONE = 2000
-LOG_PATH = "/home/" + HOST_USER + "/.local/share/" + PROGRAM_NAME + "/"
-LOG_FILENAME = LOG_PATH + "log.txt"
+
+LDAP_SERVER = os.getenv("LDAP_SERVER")
+LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
+LDAP_PASSWORD = os.getenv("LDAP_PASSWORD")
+LDAP_TREE = os.getenv("LDAP_TREE")
+LOG_PATH = os.getenv("LOG_PATH")
+LOG_FILENAME = os.getenv("LOG_FILENAME")
+
 # BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
 
