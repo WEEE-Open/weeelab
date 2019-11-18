@@ -30,6 +30,8 @@ import readline
 from getpass import getuser
 from datetime import datetime
 from time import sleep
+from typing import Optional
+
 if '--no-ldap' not in sys.argv:
 	from ldap.filter import escape_filter_chars
 	import ldap
@@ -172,7 +174,7 @@ def is_logged_in(username: str) -> bool:
 	logged = False
 	with open(LOG_FILENAME, "r") as log_file:
 		for line in log_file:
-			if ("INLAB" in line) and (username in line):
+			if inlab_line(line) and user_in_line(line, username):
 				logged = True
 				break
 	return logged
@@ -346,6 +348,16 @@ def work_time(timein, timeout) -> str:
 	return str(hours).zfill(2) + ":" + str(minutes).zfill(2)
 
 
+def inlab_line(line: str) -> bool:
+	# [02/05/2017 10:00] [----------------] [INLAB] :: <
+	return line[39:41] == "INLAB"
+
+
+def user_in_line(line: str, username: str) -> bool:
+	username_in_line = line.split('<', 1)[1].split('>', 1)[0]
+	return username == username_in_line
+
+
 def write_logout(username, curr_time, workdone) -> bool:
 	"""
 	I don't even want to know. This thing works, it's ok, don't touch it
@@ -354,10 +366,8 @@ def write_logout(username, curr_time, workdone) -> bool:
 
 	log_list = []
 	with open(LOG_FILENAME, "r") as log_file:
-		# si salva tutto il file nella lista,
-		# se trova la voce che contiene INLAB e username del logout modifica quella stringa
 		for line in log_file:
-			if ("INLAB" in line) and (username in line):
+			if inlab_line(line) and user_in_line(line, username):
 				found = True
 				login_time = line[12:17]
 				logout_time = curr_time[11:17]
@@ -431,7 +441,7 @@ def inlab():
 	print(f"{PROGRAM_NAME}: Reading log file...\n")
 	with open(LOG_FILENAME, "r") as log_file:
 		for line in log_file:
-			if "INLAB" in line:
+			if inlab_line(line):
 				count += 1
 				username = line[47:line.rfind(">")]
 				print("> " + username)
@@ -449,7 +459,7 @@ def tot_work_time(username):
 	time_spent = 0
 	with open(LOG_FILENAME, "r") as log_file:
 		for line in log_file:
-			if (username in line) and not ("INLAB" in line):
+			if user_in_line(username, line) and not inlab_line(line):
 				time_spent += ((int(line[39:41]) * 60) + int(line[42:44]))
 	return time_spent
 
