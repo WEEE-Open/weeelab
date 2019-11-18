@@ -274,10 +274,11 @@ def login(username: str, use_ldap: bool):
 		print(f"{PROGRAM_NAME}: Login successful! Hello {pretty_name}!")
 
 
-def logout(username: str, use_ldap: bool):
+def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 	"""
 	Log out.
 
+	:param message: Logout message, None to ask
 	:param use_ldap: Connect to remote LDAP server or blindly trust the input
 	:param username: User-supplied username
 	"""
@@ -294,31 +295,26 @@ def logout(username: str, use_ldap: bool):
 		if use_ldap:
 			# Grab the real username
 			user = get_user(username)
-			username = user.username
+			new_username = user.username
 			pretty_name = user.full_name
-		if not use_ldap or not is_logged_in(username):
-			# Cannot get it from LDAP or still not logged in
-			print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
+			if username == new_username or not is_logged_in(new_username):
+				print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
+				secure_exit(3)
+		else:
+			# Cannot get it from LDAP
+			print(f"{PROGRAM_NAME}: you aren't in lab! Did you use an alias or ID number? These do not work right now")
 			secure_exit(3)
 
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
-	workdone = ask_work_done()
+	if message is None:
+		workdone = ask_work_done()
+	else:
+		workdone = message
 
 	if write_logout(username, curr_time, workdone):
 		# It's bound, come on...
 		# noinspection PyUnboundLocalVariable
 		print(f"{PROGRAM_NAME}: Logout successful! Bye {pretty_name}!")
-	else:
-		print(f"{PROGRAM_NAME}: Logout failed")
-		secure_exit(3)
-
-
-def message_logout(username: str, logout_message: str):
-	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
-	if write_logout(username, curr_time, logout_message):
-		# It's bound, come on...
-		# noinspection PyUnboundLocalVariable
-		print(f"{PROGRAM_NAME}: Logout successful! Bye {username}!")
 	else:
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
@@ -350,7 +346,7 @@ def work_time(timein, timeout) -> str:
 
 def inlab_line(line: str) -> bool:
 	# [02/05/2017 10:00] [----------------] [INLAB] :: <
-	return line[39:41] == "INLAB"
+	return line[39:44] == "INLAB"
 
 
 def user_in_line(line: str, username: str) -> bool:
@@ -488,15 +484,17 @@ def main(args_dict):
 	if args_dict.get('login') is not None:
 		login(args_dict.get('login')[0], args_dict.get('ldap'))
 	elif args_dict.get('logout') is not None:
-		logout(args_dict.get('logout')[0], args_dict.get('ldap'))
+		if args_dict.get('message') is None:
+			message = None
+		else:
+			message = args_dict.get('message')[0]
+		logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
 	elif args_dict.get('inlab') is True:
 		inlab()
 	elif args_dict.get('log') is True:
 		logfile()
 	elif args_dict.get('admin') is True:
 		manual_logout()
-	elif args_dict.get('message') is True:
-		message_logout(args_dict.get('logout')[0], args_dict.get('message')[0])
 	else:
 		print("WTF?")
 		exit(69)
