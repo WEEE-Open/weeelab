@@ -37,7 +37,7 @@ if '--no-ldap' not in sys.argv:
 	from ldap.filter import escape_filter_chars
 	import ldap
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.env'))
 
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
@@ -303,6 +303,7 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 			if username == new_username or not is_logged_in(new_username):
 				print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
 				secure_exit(3)
+			username = new_username
 		else:
 			# Cannot get it from LDAP
 			print(f"{PROGRAM_NAME}: you aren't in lab! Did you use an alias or ID number? These do not work right now")
