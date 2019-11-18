@@ -21,8 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import sys
 import argparse
-from ldap.filter import escape_filter_chars
-import ldap
 # For the copyright string in --help
 from argparse import RawDescriptionHelpFormatter
 from shutil import copy2
@@ -32,6 +30,9 @@ import readline
 from getpass import getuser
 from datetime import datetime
 from time import sleep
+if '--no-ldap' not in sys.argv:
+	from ldap.filter import escape_filter_chars
+	import ldap
 
 COLOR_RED = "\033[1;31m"
 COLOR_NATIVE = "\033[m"
@@ -309,6 +310,7 @@ def logout(username: str, use_ldap: bool):
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
 
+
 def message_logout(username: str, logout_message: str):
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 	if write_logout(username, curr_time, logout_message):
@@ -318,6 +320,7 @@ def message_logout(username: str, logout_message: str):
 	else:
 		print(f"{PROGRAM_NAME}: Logout failed")
 		secure_exit(3)
+
 
 def ask_work_done():
 	try:
@@ -515,10 +518,10 @@ to redistribute it under the terms of the GNU GPLv3.
 	ldap_group_argparse_thing.add_argument('--ldap', dest='ldap', action='store_true')
 	ldap_group_argparse_thing.add_argument('--no-ldap', dest='ldap', action='store_false')
 	ldap_group_argparse_thing.set_defaults(ldap=True)
-	if ('-m' in sys.argv or '--message' in sys.argv) and ('-o' not in sys.argv and '--logout' not in sys.argv):
+	args = parser.parse_args()
+	if args.message is not None and args.logout is None:
 		parser.error("You can't set a logout message alone or for other commands other than logout.\n"
 					 "You can use -m or its equivalent --message only if you also use the -o or --logout parameter.")
-	args = parser.parse_args()
 	return args
 
 

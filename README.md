@@ -34,9 +34,3 @@ Open a terminal and type these following commands:
       -p, --inlab           show who's in lab (logged in)
       -l, --log             show log file
       -a, --admin           enter admin mode
-
-## NOTES
-
-- The file `log.txt` is filled by appending new lines.
-- The `login` and `logout` functions now work with serial numbers, telegramID and
-with nicknames as well.
