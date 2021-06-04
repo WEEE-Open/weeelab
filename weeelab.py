@@ -53,7 +53,7 @@ LDAP_BIND_DN = os.getenv("LDAP_BIND_DN")
 LDAP_PASSWORD = os.getenv("LDAP_PASSWORD")
 LDAP_TREE = os.getenv("LDAP_TREE")
 LOG_PATH = os.getenv("LOG_PATH")
-LOG_FILENAME = os.getenv("LOG_FILENAME")
+LOG_FILENAME = LOG_PATH + "/log.txt"
 
 # BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
