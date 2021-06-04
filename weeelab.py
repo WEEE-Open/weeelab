@@ -67,6 +67,11 @@ class User:
 		self.first_name = first_name
 
 
+class LdapException(BaseException):
+	def __init__(self):
+		pass
+
+
 def secure_exit(return_value=0):
 	"""
 	Terminate the program being sure about undoing some changes like CLI color
@@ -139,12 +144,10 @@ def get_user(username: str) -> User:
 		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
 	except ldap.SERVER_DOWN:
 		print(f"Cannot connect to LDAP server {LDAP_SERVER}")
-		secure_exit(38)
-		# noinspection PyTypeChecker
-		return None  # Stops complaints from the IDE
+		raise LdapException
 	if conn is None:
 		print(f"{PROGRAM_NAME}: Error connecting to LDAP server :(")
-		secure_exit(38)
+		raise LdapException
 
 	for the_filter in filters:
 		result = conn.search_s(LDAP_TREE, ldap.SCOPE_SUBTREE, the_filter, (
@@ -161,10 +164,10 @@ def get_user(username: str) -> User:
 
 	if ambiguous:
 		print(f"{PROGRAM_NAME}: Multiple accounts found for that username/matricola/nickname, try with another one.")
-		secure_exit(2)
+		return False
 	if not found:
 		print(f"{PROGRAM_NAME}: Username not recognized. Maybe you misspelled it or you're an intruder.")
-		secure_exit(2)
+		return False
 
 
 def is_logged_in(username: str) -> bool:
@@ -224,7 +227,7 @@ def store_log_to(filename, destination):
 def create_backup_if_necessary():
 	# Open master log file
 	with open(LOG_FILENAME, "r") as log_file:
-		if is_empty(log_file) is False:
+		if is_empty(log_file) is False:  # If current log file is not empty
 			last_month_year = str(log_file.read())[4:11]
 
 			curr_month = int(datetime.now().strftime("%m"))
@@ -302,12 +305,12 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 			pretty_name = user.full_name
 			if username == new_username or not is_logged_in(new_username):
 				print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
-				secure_exit(3)
+				return False
 			username = new_username
 		else:
 			# Cannot get it from LDAP
 			print(f"{PROGRAM_NAME}: you aren't in lab! Did you use an alias or ID number? These do not work right now")
-			secure_exit(3)
+			return False
 
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 	if message is None:
@@ -319,9 +322,10 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 		# It's bound, come on...
 		# noinspection PyUnboundLocalVariable
 		print(f"{PROGRAM_NAME}: Logout successful! Bye {pretty_name}!")
+		return True
 	else:
 		print(f"{PROGRAM_NAME}: Logout failed")
-		secure_exit(3)
+		return False
 
 
 def ask_work_done():
@@ -407,11 +411,11 @@ def manual_logout():
 
 	date = input("ADMIN--> insert date (gg/mm/aaaa): ")
 	if not check_date(date):
-		secure_exit(4)
+		return False
 
 	hour = input("ADMIN--> insert time (hh:mm): ")
 	if not check_hour(hour):
-		secure_exit(4)
+		return False
 
 	curr_time = date + " " + hour
 
@@ -421,7 +425,7 @@ def manual_logout():
 	print("            " + username + " " + curr_time)
 	answer = input("ADMIN--> are you sure? (y/n)")
 	if answer != "y":
-		secure_exit(4)
+		return False
 
 	if write_logout(username, curr_time, workdone):
 		print("ADMIN--> Update succeeded")
@@ -485,27 +489,31 @@ def main(args_dict):
 	ensure_log_file()
 	create_backup_if_necessary()
 
-	if args_dict.get('login') is not None:
-		login(args_dict.get('login')[0], args_dict.get('ldap'))
-	elif args_dict.get('logout') is not None:
-		if args_dict.get('message') is None:
-			message = None
+	result = True
+	try:
+		if args_dict.get('login') is not None:
+			login(args_dict.get('login')[0], args_dict.get('ldap'))
+		elif args_dict.get('logout') is not None:
+			if args_dict.get('message') is None:
+				message = None
+			else:
+				message = args_dict.get('message')[0]
+			result = logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
+		elif args_dict.get('inlab') is True:
+			inlab()
+		elif args_dict.get('log') is True:
+			logfile()
+		elif args_dict.get('admin') is True:
+			result = manual_logout()
 		else:
-			message = args_dict.get('message')[0]
-		logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
-	elif args_dict.get('inlab') is True:
-		inlab()
-	elif args_dict.get('log') is True:
-		logfile()
-	elif args_dict.get('admin') is True:
-		manual_logout()
-	else:
-		print("WTF?")
-		exit(69)
+			print("WTF?")
+			exit(69)
+	except LdapException:
+		result = False
 
+	if not result:
+		secure_exit(3)
 
-# manual_logout()
-# sys.stdout.write(COLOR_NATIVE)
 
 def argparse_this():
 	parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description="""
