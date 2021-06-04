@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=LOGIN
 Comment=Log in
-Exec=/home/weee/weeelab/login.sh
+Exec=/home/weee/weeelab/weeelab.py --interactive-login
 Icon=/home/weee/asd.png
 Terminal=true
 Type=Application

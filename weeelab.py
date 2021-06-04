@@ -67,10 +67,14 @@ class User:
 		self.first_name = first_name
 
 
-class LdapException(BaseException):
+class LdapError(BaseException):
 	def __init__(self):
 		pass
 
+
+class UserNotFoundError(BaseException):
+	def __init__(self):
+		pass
 
 def secure_exit(return_value=0):
 	"""
@@ -137,17 +141,17 @@ def get_user(username: str) -> User:
 	del matricolized
 
 	try:
-		print(f"Asking {LDAP_SERVER} for info...")
+		# print(f"Asking {LDAP_SERVER} for info...")
 		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
 		conn.protocol_version = ldap.VERSION3
 		conn.start_tls_s()
 		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
 	except ldap.SERVER_DOWN:
 		print(f"Cannot connect to LDAP server {LDAP_SERVER}")
-		raise LdapException
+		raise LdapError
 	if conn is None:
-		print(f"{PROGRAM_NAME}: Error connecting to LDAP server :(")
-		raise LdapException
+		print(f"Error connecting to LDAP server :(")
+		raise LdapError
 
 	for the_filter in filters:
 		result = conn.search_s(LDAP_TREE, ldap.SCOPE_SUBTREE, the_filter, (
@@ -163,11 +167,11 @@ def get_user(username: str) -> User:
 	conn.unbind_s()
 
 	if ambiguous:
-		print(f"{PROGRAM_NAME}: Multiple accounts found for that username/matricola/nickname, try with another one.")
-		return False
+		print(f"Multiple accounts found for that username/matricola/nickname, try with another one.")
+		raise UserNotFoundError
 	if not found:
-		print(f"{PROGRAM_NAME}: Username not recognized. Maybe you misspelled it or you're an intruder.")
-		return False
+		print(f"Username not recognized. Maybe you misspelled it or you're an intruder.")
+		raise UserNotFoundError
 
 
 def is_logged_in(username: str) -> bool:
@@ -204,10 +208,10 @@ def is_empty(input_file) -> bool:
 def ensure_log_file():
 	if not os.path.exists(LOG_FILENAME):
 		if os.path.isdir(os.path.dirname(LOG_FILENAME)):
-			print(f"{PROGRAM_NAME}: creating empty log.txt")
+			print(f"Creating empty log.txt")
 			open(LOG_FILENAME, "a").close()
 		else:
-			print(f"{PROGRAM_NAME}: cannot find directory {os.path.dirname(LOG_FILENAME)}")
+			print(f"Cannot find directory {os.path.dirname(LOG_FILENAME)}")
 			secure_exit(1)
 
 
@@ -219,7 +223,7 @@ def store_log_to(filename, destination):
 	:param destination: Path to destination file or directory
 	"""
 	if DEBUG_MODE:
-		print(f"{PROGRAM_NAME}: DEBUG_MODE, skipped copying {os.path.basename(filename)} to {destination}")
+		print(f"DEBUG_MODE, skipped copying {os.path.basename(filename)} to {destination}")
 	else:
 		copy2(filename, destination)
 
@@ -240,13 +244,13 @@ def create_backup_if_necessary():
 			if (curr_month > last_month) or (curr_year > last_year):
 				# log.txt -> log201901.txt, foo.txt -> foo201901.txt, etc...
 				stored_log_filename = LOG_FILENAME.rsplit('.', 1)[0] + last_date.strftime("%Y%m") + ".txt"
-				print(f"{PROGRAM_NAME}: Backing up log file to {os.path.basename(stored_log_filename)}")
+				print(f"Backing up log file to {os.path.basename(stored_log_filename)}")
 				os.rename(LOG_FILENAME, stored_log_filename)
 				# store_log_to(stored_log_filename, BACKUP_PATH)
-				print(f"{PROGRAM_NAME}: Done!")
+				# print(f"Done!")
 
 				open(LOG_FILENAME, "a").close()
-				print(f"{PROGRAM_NAME}: New log file was created.")
+				print(f"New log file was created.")
 
 
 def login(username: str, use_ldap: bool):
@@ -268,7 +272,7 @@ def login(username: str, use_ldap: bool):
 		pretty_name = username
 
 	if is_logged_in(username):
-		print(f"{PROGRAM_NAME}: {pretty_name}, you're already logged in.")
+		print(f"{pretty_name}, you're already logged in.")
 	else:
 		curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
 		login_string = f"[{curr_time}] [----------------] [INLAB] <{username}>\n"
@@ -277,7 +281,7 @@ def login(username: str, use_ldap: bool):
 
 		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
-		print(f"{PROGRAM_NAME}: Login successful! Hello {pretty_name}!")
+		print(f"Login successful! Hello {pretty_name}!")
 
 
 def logout(username: str, use_ldap: bool, message: Optional[str] = None):
@@ -304,12 +308,12 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 			new_username = user.username
 			pretty_name = user.full_name
 			if username == new_username or not is_logged_in(new_username):
-				print(f"{PROGRAM_NAME}: you aren't in lab! Did you forget to log in?")
+				print(f"You aren't in lab! Did you forget to log in?")
 				return False
 			username = new_username
 		else:
 			# Cannot get it from LDAP
-			print(f"{PROGRAM_NAME}: you aren't in lab! Did you use an alias or ID number? These do not work right now")
+			print(f"You aren't in lab! Did you use an alias or ID number? These do not work right now")
 			return False
 
 	curr_time = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -321,21 +325,21 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 	if write_logout(username, curr_time, workdone):
 		# It's bound, come on...
 		# noinspection PyUnboundLocalVariable
-		print(f"{PROGRAM_NAME}: Logout successful! Bye {pretty_name}!")
+		print(f"Logout successful! Bye {pretty_name}!")
 		return True
 	else:
-		print(f"{PROGRAM_NAME}: Logout failed")
+		print(f"Logout failed")
 		return False
 
 
 def ask_work_done():
 	try:
-		workdone = input(f"{PROGRAM_NAME}: What have you done?\n:: ")
+		workdone = input(f"What have you done?\n:: ")
 		while len(workdone) > MAX_WORK_DONE:
-			print(f"{PROGRAM_NAME}: I didn't ask you the story of your life!")
-			workdone = input(f"{PROGRAM_NAME}: What have you done? [BRIEFLY]\n:: ")
+			print(f"I didn't ask you the story of your life!")
+			workdone = input(f"What have you done? [BRIEFLY]\n:: ")
 	except KeyboardInterrupt:
-		print(f"{PROGRAM_NAME}: Logout cancelled by keyboard interrupt")
+		print(f"Logout cancelled by keyboard interrupt")
 		secure_exit(5)
 		return None  # Just prevents PyCharm from complaining
 	return workdone
@@ -434,7 +438,7 @@ def manual_logout():
 
 
 def logfile():
-	print(f"{PROGRAM_NAME}: Reading log file...\n")
+	print(f"Reading log file...\n")
 	with open(LOG_FILENAME, "r") as log_file:
 		for line in log_file:
 			print(line, end='')
@@ -442,7 +446,7 @@ def logfile():
 
 def inlab():
 	count = 0
-	print(f"{PROGRAM_NAME}: Reading log file...\n")
+	print(f"Reading log file...\n")
 	with open(LOG_FILENAME, "r") as log_file:
 		for line in log_file:
 			if inlab_line(line):
@@ -451,11 +455,11 @@ def inlab():
 				print("> " + username)
 
 	if count == 0:
-		print(f"{PROGRAM_NAME}: Nobody is in lab right now.")
+		print(f"Nobody is in lab right now.")
 	elif count == 1:
-		print(f"{PROGRAM_NAME}: There is one student in lab right now.")
+		print(f"There is one student in lab right now.")
 	else:
-		print(f"{PROGRAM_NAME}: There are {count} students in lab right now.")
+		print(f"There are {count} students in lab right now.")
 
 
 # Returns total work time in minutes
@@ -473,6 +477,46 @@ def time_conv(minutes):
 	return str(int(minutes / 60)) + " h " + str(int(minutes % 60)) + " m"
 
 
+def interactive_log(in_: bool, use_ldap: bool):
+	retry = True
+	retry_username = None
+	while retry:
+		try:
+			if retry_username:
+				username = retry_username
+				retry_username = None
+			else:
+				username = input(f"Type your name.surname OR id (matricola) OR nickname:\n")
+			try:
+				if in_:
+					login(username, use_ldap)
+					return True
+				else:
+					res = logout(username, use_ldap)
+					if res:
+						return True
+			except LdapError:
+				retry_ldap_question = True
+				print(f"Hmmm... It seems the network or the LDAP server has some problems.")
+				while retry_ldap_question:
+					choice = input("Type R to retry or D to disable LDAP lookup: [R/D] ")
+					choice = choice.strip().upper()
+					if choice == 'R':
+						retry_username = username
+						retry_ldap_question = False
+					elif choice == 'D':
+						use_ldap = False
+						retry_ldap_question = False
+			except UserNotFoundError:
+				pass
+		except KeyboardInterrupt:
+			print(f"Keyboard interrupt detected, interactive log{'in' if in_ else 'out'} cancelled")
+			return False
+		except EOFError:
+			print(f"EOF detected, interactive log{'in' if in_ else 'out'} cancelled")
+			return False
+
+
 def main(args_dict):
 	# root execution check
 	if os.geteuid() == 0:
@@ -482,7 +526,7 @@ def main(args_dict):
 	if args_dict.get('debug'):
 		global DEBUG_MODE
 		DEBUG_MODE = True
-		print(f"{PROGRAM_NAME}: DEBUG_MODE enabled")
+		print(f"DEBUG_MODE enabled")
 		global LOG_FILENAME
 		LOG_FILENAME = "./debug/log.txt"
 
@@ -499,6 +543,10 @@ def main(args_dict):
 			else:
 				message = args_dict.get('message')[0]
 			result = logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
+		elif args_dict.get('interactive_login'):
+			result = interactive_log(True, args_dict.get('ldap'))
+		elif args_dict.get('interactive_logout'):
+			result = interactive_log(False, args_dict.get('ldap'))
 		elif args_dict.get('inlab'):
 			inlab()
 		elif args_dict.get('log'):
@@ -508,7 +556,9 @@ def main(args_dict):
 		else:
 			print("WTF?")
 			exit(69)
-	except LdapException:
+	except LdapError:
+		result = False
+	except UserNotFoundError:
 		result = False
 
 	if not result:
@@ -530,6 +580,8 @@ to redistribute it under the terms of the GNU GPLv3.
 	group = parser.add_argument_group('Actions').add_mutually_exclusive_group(required=True)
 	group.add_argument('-i', '--login', type=str, nargs=1, metavar='USER', help='log in USER')
 	group.add_argument('-o', '--logout', type=str, nargs=1, metavar='USER', help='log out USER')
+	group.add_argument('--interactive-login', action='store_true', help='log in with questions')
+	group.add_argument('--interactive-logout', action='store_true', help='log out with questions')
 	parser.add_argument('-m', '--message', type=str, nargs=1, metavar='MESSAGE', help='logout message')
 	group.add_argument('-p', '--inlab', action='store_true', help='show who\'s in lab (logged in)')
 	group.add_argument('-l', '--log', action='store_true', help='show log file')
