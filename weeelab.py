@@ -202,7 +202,7 @@ def is_empty(input_file) -> bool:
 
 
 def ensure_log_file():
-	if os.path.exists(LOG_FILENAME) is False:
+	if not os.path.exists(LOG_FILENAME):
 		if os.path.isdir(os.path.dirname(LOG_FILENAME)):
 			print(f"{PROGRAM_NAME}: creating empty log.txt")
 			open(LOG_FILENAME, "a").close()
@@ -218,7 +218,7 @@ def store_log_to(filename, destination):
 	:param filename: Path to source file
 	:param destination: Path to destination file or directory
 	"""
-	if DEBUG_MODE is True:
+	if DEBUG_MODE:
 		print(f"{PROGRAM_NAME}: DEBUG_MODE, skipped copying {os.path.basename(filename)} to {destination}")
 	else:
 		copy2(filename, destination)
@@ -227,7 +227,7 @@ def store_log_to(filename, destination):
 def create_backup_if_necessary():
 	# Open master log file
 	with open(LOG_FILENAME, "r") as log_file:
-		if is_empty(log_file) is False:  # If current log file is not empty
+		if not is_empty(log_file):  # If current log file is not empty
 			last_month_year = str(log_file.read())[4:11]
 
 			curr_month = int(datetime.now().strftime("%m"))
@@ -479,7 +479,7 @@ def main(args_dict):
 		print("Error: can't execute " + PROGRAM_NAME + " as root.")
 		exit(42)
 
-	if args_dict.get('debug') is True:
+	if args_dict.get('debug'):
 		global DEBUG_MODE
 		DEBUG_MODE = True
 		print(f"{PROGRAM_NAME}: DEBUG_MODE enabled")
@@ -491,19 +491,19 @@ def main(args_dict):
 
 	result = True
 	try:
-		if args_dict.get('login') is not None:
+		if args_dict.get('login'):
 			login(args_dict.get('login')[0], args_dict.get('ldap'))
-		elif args_dict.get('logout') is not None:
+		elif args_dict.get('logout'):
 			if args_dict.get('message') is None:
 				message = None
 			else:
 				message = args_dict.get('message')[0]
 			result = logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
-		elif args_dict.get('inlab') is True:
+		elif args_dict.get('inlab'):
 			inlab()
-		elif args_dict.get('log') is True:
+		elif args_dict.get('log'):
 			logfile()
-		elif args_dict.get('admin') is True:
+		elif args_dict.get('admin'):
 			result = manual_logout()
 		else:
 			print("WTF?")
