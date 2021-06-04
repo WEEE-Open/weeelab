@@ -32,6 +32,9 @@ from datetime import datetime
 from time import sleep
 from typing import Optional
 from dotenv import load_dotenv
+from select import select
+import subprocess
+import os
 
 if '--no-ldap' not in sys.argv:
 	from ldap.filter import escape_filter_chars
@@ -54,6 +57,11 @@ LDAP_PASSWORD = os.getenv("LDAP_PASSWORD")
 LDAP_TREE = os.getenv("LDAP_TREE")
 LOG_PATH = os.getenv("LOG_PATH")
 LOG_FILENAME = LOG_PATH + "/log.txt"
+FIRST_IN = os.getenv("FIRST_IN_SCRIPT_PATH")
+LAST_OUT = os.getenv("LAST_OUT_SCRIPT_PATH")
+
+FIRST_IN_HAPPENED = False
+LAST_OUT_HAPPENED = False
 
 # BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
@@ -190,6 +198,15 @@ def is_logged_in(username: str) -> bool:
 	return logged
 
 
+def people_in_lab() -> int:
+	count = 0
+	with open(LOG_FILENAME, "r") as log_file:
+		for line in log_file:
+			if inlab_line(line):
+				count += 1
+	return count
+
+
 def is_empty(input_file) -> bool:
 	"""
 	Check if inputFile is empty.
@@ -261,6 +278,8 @@ def login(username: str, use_ldap: bool):
 	:param username: User-supplied username
 	"""
 
+	lab_was_empty = people_in_lab() == 0
+
 	if use_ldap:
 		user = get_user(username)
 		username = user.username
@@ -281,6 +300,9 @@ def login(username: str, use_ldap: bool):
 
 		# store_log_to(LOG_FILENAME, BACKUP_PATH)
 
+		if lab_was_empty:
+			global FIRST_IN_HAPPENED
+			FIRST_IN_HAPPENED = True
 		print(f"Login successful! Hello {pretty_name}!")
 
 
@@ -292,6 +314,9 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 	:param use_ldap: Connect to remote LDAP server or blindly trust the input
 	:param username: User-supplied username
 	"""
+
+	last_person = people_in_lab() == 1
+
 	if not use_ldap:
 		print(COLOR_RED)
 		print("WARNING: bypassing LDAP lookup, make sure that this is the correct username and not an alias")
@@ -323,8 +348,9 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 		workdone = message
 
 	if write_logout(username, curr_time, workdone):
-		# It's bound, come on...
-		# noinspection PyUnboundLocalVariable
+		if last_person:
+			global LAST_OUT_HAPPENED
+			LAST_OUT_HAPPENED = True
 		print(f"Logout successful! Bye {pretty_name}!")
 		return True
 	else:
@@ -534,6 +560,7 @@ def main(args_dict):
 	create_backup_if_necessary()
 
 	result = True
+	interactive = False
 	try:
 		if args_dict.get('login'):
 			login(args_dict.get('login')[0], args_dict.get('ldap'))
@@ -544,8 +571,10 @@ def main(args_dict):
 				message = args_dict.get('message')[0]
 			result = logout(args_dict.get('logout')[0], args_dict.get('ldap'), message)
 		elif args_dict.get('interactive_login'):
+			interactive = True
 			result = interactive_log(True, args_dict.get('ldap'))
 		elif args_dict.get('interactive_logout'):
+			interactive = True
 			result = interactive_log(False, args_dict.get('ldap'))
 		elif args_dict.get('inlab'):
 			inlab()
@@ -560,6 +589,37 @@ def main(args_dict):
 		result = False
 	except UserNotFoundError:
 		result = False
+
+	auto_close = True
+
+	if FIRST_IN_HAPPENED:
+		if FIRST_IN:
+			if os.path.isfile(FIRST_IN):
+				print("I'm now launching the \"first in\" script, but you can close this window")
+				subprocess.Popen([FIRST_IN])
+			else:
+				print(f"The \"first in\" script \"{FIRST_IN}\" does not exist, notify an administrator")
+
+	if LAST_OUT_HAPPENED:
+		if LAST_OUT:
+			if os.path.isfile(LAST_OUT):
+				print("I'm now launching the \"last out\" script, but you can close this window")
+				subprocess.Popen([LAST_OUT])
+			else:
+				print(f"The \"last out\" script \"{LAST_OUT}\" does not exist, notify an administrator")
+
+	# if SIR:
+	#   auto_close = False
+
+	if interactive:
+		if auto_close and result:
+			print("Press enter to exit (or wait 10 seconds)")
+			# does not work on windows:
+			select([sys.stdin], [], [], 10)
+		else:
+			print("Press enter to exit")
+			# does not work on windows:
+			input()
 
 	if not result:
 		secure_exit(3)
