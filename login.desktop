@@ -2,6 +2,6 @@
 Name=LOGIN
 Comment=Log in
 Exec=/home/weee/Documenti/weeelab/weeelab.py --interactive-login
-Icon=/home/weee/Documenti/weeelab/asd.png
+Icon=/home/weee/Documenti/weeelab/login.png
 Terminal=true
 Type=Application
