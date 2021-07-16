@@ -29,22 +29,33 @@ export LOG_FILENAME="${LOG_PATH}log.txt"
 
 ## COMMAND SYNTAX
 
-    usage: weeelab.py [-h] [-d] [-i USER] [-o USER] [-m MESSAGE] [-p] [-l] [-a]
-                  [--ldap | --no-ldap]
+```
+usage: weeelab.py [-h] [-d] [-i USER] [-o USER] [--interactive-login] [--interactive-logout] [-m MESSAGE]
+                  [-p] [-l] [-a] [--ldap | --no-ldap]
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      -d, --debug           enable debug mode (don't copy files to ownCloud)
-      -m MESSAGE, --message MESSAGE
-                            logout message
-      --ldap
-      --no-ldap
+optional arguments:
+  -h, --help            show this help message and exit
+  -d, --debug           enable debug mode (don't copy files to ownCloud)
+  -m MESSAGE, --message MESSAGE
+                        logout message
+  --ldap
+  --no-ldap
 
-    Actions:
-      -i USER, --login USER
-                            log in USER
-      -o USER, --logout USER
-                            log out USER
-      -p, --inlab           show who's in lab (logged in)
-      -l, --log             show log file
-      -a, --admin           enter admin mode
+Actions:
+  -i USER, --login USER
+                        log in USER
+  -o USER, --logout USER
+                        log out USER
+  --interactive-login   log in with questions
+  --interactive-logout  log out with questions
+  -p, --inlab           show who's in lab (logged in)
+  -l, --log             show log file
+  -a, --admin           enter admin mode
+```
+
+## License
+
+GNU GPL v3 except for icons:
+
+**login.png**: Icons made by <a href="" title="surang">surang</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>
+**logout.png**: Icons made by <a href="https://www.flaticon.com/authors/pause08" title="Pause08">Pause08</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a>

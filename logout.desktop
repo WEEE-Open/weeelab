@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=LOGOUT
 Comment=Log out
-Exec=/home/weee/weeelab/weeelab.py --interactive-logout
-Icon=/home/weee/lollone.png
+Exec=/home/weee/Documenti/weeelab/weeelab.py --interactive-logout
+Icon=/home/weee/Documenti/weeelab/lollone.png
 Terminal=true
 Type=Application
