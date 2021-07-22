@@ -512,15 +512,11 @@ def interactive_log(in_: bool, use_ldap: bool):
 				username = retry_username
 				retry_username = None
 			else:
-				text = input("Type your name.surname OR id (matricola) OR nickname OR swipe the card on the reader:\n")
-				text = split(text)
-				username = ""
-				if (text[0] == "ò" and (text[len(text)-1] == "-" or text[len(text)-1] == "_")) or (text[0] == ";" and (text[len(text)-1] == "/" or text[len(text)-1] == "?")): # Input with magnetic card
-    					for i in list(range(9,15)):
-        					username += text[i]    
-				else:  # Input with keyboard
-    					for char in text:
-        					username += char
+				username = input("Type your name.surname OR id (matricola) OR nickname OR swipe the card on the reader:\n")
+				matricola_scan = read_from_card_reader(username)
+				if matricola_scan:  # Input with magnetic card
+					username = matricola_scan
+
 			try:
 				if in_:
 					login(username, use_ldap)
@@ -549,6 +545,26 @@ def interactive_log(in_: bool, use_ldap: bool):
 		except EOFError:
 			print(f"EOF detected, interactive log{'in' if in_ else 'out'} cancelled")
 			return False
+
+
+def read_from_card_reader(text) -> Optional[str]:
+	direction = None
+	if text[0] == "ò":
+		if text[-1] == "-":
+			direction = "top to bottom"
+		elif text[-1] == "_":
+			direction = "bottom to top"
+	elif text[0] == ";":
+		if text[-1] == "/":
+			direction = "top to bottom"
+		elif text[-1] == "?":
+			direction = "bottom to top"
+
+	if direction is not None:
+		matricola = text[9:15]
+		print(f"Detected card scan from {direction} with matricola {matricola}")
+		return matricola
+	return None
 
 
 def main(args_dict):
