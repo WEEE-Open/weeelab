@@ -547,31 +547,47 @@ def interactive_log(in_: bool, use_ldap: bool):
 			return False
 
 
-def read_from_card_reader(text) -> Optional[str]:
+def read_from_card_reader(text: str) -> Optional[str]:
+	old_format = False
 	direction = None
-	i= 0
+	# matricola = None
 	if text[0] == "ò":
 		if text[-1] == "-":
-			direction = "top to bottom"
+			direction = " from top to bottom"
+			old_format = True
 		elif text[-1] == "_":
-			direction = "bottom to top"
+			direction = " from bottom to top"
+			old_format = True
 	elif text[0] == ";":
 		if text[-1] == "/":
-			direction = "top to bottom"
+			direction = " from top to bottom"
+			old_format = True
 		elif text[-1] == "?":
-			direction = "bottom to top"
-	for char in text:
-		if char == "ò" and "".join(text[(i+1):(i+5)]) == "0000":
-			matricola = text[i+9:i+15]
-			print(f"Detected card scan with matricola {matricola}")
-			return matricola
-		i += 1
-			
-	if direction is not None:
+			direction = " from bottom to top"
+			old_format = True
+
+	if old_format:
 		matricola = text[9:15]
-		print(f"Detected card scan from {direction} with matricola {matricola}")
+	else:
+		matricola = read_from_card_reader_o_accentata(text, "ò")
+		if not matricola:
+			matricola = read_from_card_reader_o_accentata(text, ";")
+
+	if matricola is not None:
+		print(f"Detected card scan{direction if direction else ''} with matricola {matricola}")
 		return matricola
 	return None
+
+
+def read_from_card_reader_o_accentata(text: str, delimiter: str):
+	try:
+		i = 0
+		while 1:
+			i = text.index(delimiter, i)
+			if text[i + 1:i + 5] == "0000" and len(text) > i + 15 + 1:
+				return text[i + 9:i + 15]
+	except ValueError:
+		return None
 
 
 def main(args_dict):
