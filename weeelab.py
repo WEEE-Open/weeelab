@@ -551,14 +551,14 @@ def read_from_card_reader(text) -> Optional[str]:
 	direction = None
 	if text[0] == "ò":
 		if text[-1] == "-":
-			direction = "left"
+			direction = "left/top"
 		elif text[-1] == "_":
-			direction = "right"
+			direction = "right/bottom"
 	elif text[0] == ";":
 		if text[-1] == "/":
-			direction = "left"
+			direction = "left/top"
 		elif text[-1] == "?":
-			direction = "right"
+			direction = "right/bottom"
 
 	if direction is not None:
 		matricola = text[9:15]
