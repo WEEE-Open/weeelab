@@ -549,6 +549,7 @@ def interactive_log(in_: bool, use_ldap: bool):
 
 def read_from_card_reader(text) -> Optional[str]:
 	direction = None
+	i= 0
 	if text[0] == "ò":
 		if text[-1] == "-":
 			direction = "top to bottom"
@@ -559,7 +560,13 @@ def read_from_card_reader(text) -> Optional[str]:
 			direction = "top to bottom"
 		elif text[-1] == "?":
 			direction = "bottom to top"
-
+	for char in text:
+		if char == "ò" and "".join(text[(i+1):(i+5)]) == "0000":
+			matricola = text[i+9:i+15]
+			print(f"Detected card scan with matricola {matricola}")
+			return matricola
+		i += 1
+			
 	if direction is not None:
 		matricola = text[9:15]
 		print(f"Detected card scan from {direction} with matricola {matricola}")
