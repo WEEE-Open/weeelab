@@ -512,7 +512,15 @@ def interactive_log(in_: bool, use_ldap: bool):
 				username = retry_username
 				retry_username = None
 			else:
-				username = input(f"Type your name.surname OR id (matricola) OR nickname:\n")
+				text = input("Type your name.surname OR id (matricola) OR nickname OR swipe the card on the reader:\n")
+				text = split(text)
+				username = ""
+				if (text[0] == "ò" and (text[len(text)-1] == "-" or text[len(text)-1] == "_")) or (text[0] == ";" and (text[len(text)-1] == "/" or text[len(text)-1] == "?")): # Input with magnetic card
+    					for i in list(range(9,15)):
+        					username += text[i]    
+				else:  # Input with keyboard
+    					for char in text:
+        					username += char
 			try:
 				if in_:
 					login(username, use_ldap)
