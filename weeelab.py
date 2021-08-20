@@ -360,10 +360,16 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 
 def ask_work_done():
 	try:
-		workdone = input(f"What have you done?\n:: ")
-		while len(workdone) > MAX_WORK_DONE:
-			print(f"I didn't ask you the story of your life!")
-			workdone = input(f"What have you done? [BRIEFLY]\n:: ")
+		ok = False
+		workdone = ""
+		while not ok:
+			workdone = input(f"What have you done?\n:: ").strip()
+			if len(workdone) > MAX_WORK_DONE:
+				print(f"I didn't ask you the story of your life! Type a shorter sentence!")
+			elif len(workdone) <= 0:
+				print(f"Come on, tell me something! How was your day?")
+			else:
+				ok = True
 	except KeyboardInterrupt:
 		print(f"Logout cancelled by keyboard interrupt")
 		secure_exit(5)
