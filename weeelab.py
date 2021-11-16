@@ -62,6 +62,7 @@ LAST_OUT = os.getenv("LAST_OUT_SCRIPT_PATH")
 
 FIRST_IN_HAPPENED = False
 LAST_OUT_HAPPENED = False
+SIR_HAPPENED = False
 
 # BACKUP_PATH = "/home/" + HOST_USER + "/ownCloud/" + PROGRAM_NAME.capitalize() + "/"
 
@@ -69,10 +70,11 @@ LAST_OUT_HAPPENED = False
 # A perfect candidate for dataclasses... which may not be available on an old Python version.
 # So no dataclasses.
 class User:
-	def __init__(self, username: str, full_name: str, first_name: str):
+	def __init__(self, username: str, full_name: str, first_name: str, signed_sir: bool):
 		self.username = username
 		self.full_name = full_name
 		self.first_name = first_name
+		self.signed_sir = signed_sir
 
 
 class LdapError(BaseException):
@@ -165,13 +167,18 @@ def get_user(username: str) -> User:
 		result = conn.search_s(LDAP_TREE, ldap.SCOPE_SUBTREE, the_filter, (
 			'uid',
 			'cn',
-			'givenname'
+			'givenname',
+			'signedsir'
 		))
 		if len(result) > 1:
 			ambiguous = True
 		if len(result) == 1:
 			attr = result[0][1]
-			return User(attr['uid'][0].decode(), attr['cn'][0].decode(), attr['givenname'][0].decode())
+			if 'signedsir' in attr:
+				signed_sir = attr['signedsir'][0].decode().lower() == 'true'
+			else:
+				signed_sir = False
+			return User(attr['uid'][0].decode(), attr['cn'][0].decode(), attr['givenname'][0].decode(), signed_sir)
 	conn.unbind_s()
 
 	if ambiguous:
@@ -284,6 +291,7 @@ def login(username: str, use_ldap: bool):
 		user = get_user(username)
 		username = user.username
 		pretty_name = user.full_name
+		check_sir(user)
 	else:
 		print(COLOR_RED)
 		print("WARNING: bypassing LDAP lookup, make sure that this is the correct username and not an alias")
@@ -332,6 +340,7 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 			user = get_user(username)
 			new_username = user.username
 			pretty_name = user.full_name
+			check_sir(user)
 			if username == new_username or not is_logged_in(new_username):
 				print(f"You aren't in lab! Did you forget to log in?")
 				return False
@@ -356,6 +365,11 @@ def logout(username: str, use_ldap: bool, message: Optional[str] = None):
 	else:
 		print(f"Logout failed")
 		return False
+
+
+def check_sir(user):
+	global SIR_HAPPENED
+	SIR_HAPPENED = not user.signed_sir
 
 
 def ask_work_done():
@@ -645,6 +659,33 @@ def main(args_dict):
 
 	auto_close = True
 
+	if SIR_HAPPENED:
+		red = "\033[41m\033[30m"
+		yellow = "\033[41m\033[97m"
+		border = "\033[103m"
+		bold = ""  # "\033[1m"
+		disagio = "\033[5m"
+		# underline = "\033[4m"
+		underline = "\033[97m"
+		reset = "\033[0m"
+		# print("\x1b[1;37;44m")
+		# print("\x1b[1;34;41m")
+		print(f"{red}{bold}")
+		print(f"                                                                          ")
+		print(f"                                                                          ")
+		print(f"                                 {border}                   {red}")
+		print(f"                                 {border}  {red}               {border}  {red}")
+		print(f"                                 {border}  {yellow}{disagio} SIGN THE SIR!{reset}{red} {border}  {red}")
+		print(f"                                 {border}  {red}               {border}  {red}")
+		print(f"                                 {border}                   {red}")
+		print(f"")
+		print(f" This is mandatory and very important, you have to make {underline}4 signatures{reset}{red} on a boring form.")
+		print(f"              Ask someone else in lab or on Telegram to provide you the form.")
+		print(f"")
+		# print("\x1b[1;37;44m")
+		print(reset)
+		auto_close = False
+
 	if FIRST_IN_HAPPENED:
 		if FIRST_IN:
 			if os.path.isfile(FIRST_IN):
@@ -660,9 +701,6 @@ def main(args_dict):
 				subprocess.Popen([LAST_OUT])
 			else:
 				print(f"The \"last out\" script \"{LAST_OUT}\" does not exist, notify an administrator")
-
-	# if SIR:
-	#   auto_close = False
 
 	if interactive:
 		if auto_close and result:
