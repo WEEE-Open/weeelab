@@ -152,9 +152,10 @@ def get_user(username: str) -> User:
 
 	try:
 		# print(f"Asking {LDAP_SERVER} for info...")
-		conn = ldap.initialize(f"ldap://{LDAP_SERVER}:389")
+		conn = ldap.initialize(LDAP_SERVER)
 		conn.protocol_version = ldap.VERSION3
-		conn.start_tls_s()
+		if LDAP_SERVER.startswith('ldap://'):
+			conn.start_tls_s()
 		conn.simple_bind_s(LDAP_BIND_DN, LDAP_PASSWORD)
 	except ldap.SERVER_DOWN:
 		print(f"Cannot connect to LDAP server {LDAP_SERVER}")
