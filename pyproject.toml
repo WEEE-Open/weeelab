@@ -9,7 +9,7 @@ description = "A sample Python project"
 authors = [{ name = "WEEE Open" }]
 readme = "README.md"
 license = { file = "LICENSE" }
-dependencies = ["psycopg2"]
+dependencies = ["psycopg2-binary", "python-ldap"]
 
 [project.scripts]
 weeelab = "weeelab.__main__:main"

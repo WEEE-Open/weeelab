@@ -4,3 +4,12 @@ host = "localhost"
 port = 5432
 user = "weeelab"
 password = "asd"
+
+[ldap]
+host = "ldap.example.com"
+bind_dn = "cn=something,dc=example,dc=com"
+password = "foo"
+tree = "ou=People,dc=example,dc=com"
+
+[tmp]
+path = "tmp_audits"

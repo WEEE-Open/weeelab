@@ -12,3 +12,5 @@ if not CONFIG_PATH.exists():
     # Use default config
     CONFIG_PATH = Path(files("weeelab")) / "config.toml"
 logger.debug(f"Using config file: {CONFIG_PATH}")
+
+COLOR_NATIVE = "\033[m"
