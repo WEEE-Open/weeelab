@@ -20,7 +20,7 @@ pip install weeelab
 
 Then create a file named `config.toml` in `~/.config/WEEE Open/weeelab` with the following variables:
 
-```shell script
+```toml
 [db]
 name = "grillo"
 host = "localhost"
@@ -29,7 +29,7 @@ user = "weeelab"
 password = "asd"
 
 [ldap]
-host = "ldap.example.com"
+host = "ldap://ldap.example.com" # This will use STARTTLS, use ldaps:// for LDAPS. You can also specify a port: ldap://example:com:3389 
 bind_dn = "cn=something,dc=example,dc=com"
 password = "foo"
 tree = "ou=People,dc=example,dc=com"
