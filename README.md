@@ -10,9 +10,7 @@ The goal of this script is to move to the trash can the paper sign sheet.
 Open a terminal and type these following commands:
 
 ```shell script
-git clone https://github.com/weee-open/weeelab
-cd weeelab
-sudo cp weeelab.py /bin/weeelab
+pip install weeelab
 ```
 
 Then create a file named `.env` (dot env) and add something like this:
