@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS "audit" (
     FOREIGN KEY(userId) REFERENCES "user"(id),
     FOREIGN KEY(location) REFERENCES "location"(id)
 );
+
+
+Note: user.id is the username, and location.id is the location name.
 """
 
 import psycopg2
@@ -37,16 +40,20 @@ def connect():
         port=config["db"]["port"]
     )
 
-def login(username: str):
+def create_user(username: str):
+    pass
+
+def login(username: str, location: str = "lab"):
     """
     Check that the user is not logged in. If it is, throw an error.
-    Otherwise, update the user's inlab status to True.
+    If the user doesn't exist, create it.
+    Then, add an entry to the audit table.
     """
+    pass
 
-def logout(user_id):
-    conn = connect()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE \"user\" SET inlab = FALSE WHERE id = %s", (user_id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
+def logout(username: str, motivation: str = ""):
+    """
+    Check that the user is logged in. If it isn't, throw an error.
+    Update the entry in the audit table.
+    """
+    pass
