@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "weeelab"
+version = "0.1.5"
+description = "A sample Python project"
+authors = [{ name = "WEEE Open" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+dependencies = ["psycopg2"]
+
+[project.scripts]
+weeelab = "weeelab.__main__:main"

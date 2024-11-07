@@ -8,3 +8,6 @@ test.php
 __pycache__/
 debug/
 .env
+.direnv/
+build/
+*.egg-info
