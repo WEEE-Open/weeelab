@@ -15,6 +15,7 @@ def convert_to_sql(file):
         lines = f.readlines()
 
     sql_file = file.with_suffix(".sql")
+    new_lines = []
     for i, line in enumerate(lines):
         try:
             indatetime, exdatetime = line[1:17], line[20:36]
@@ -25,7 +26,7 @@ def convert_to_sql(file):
                 datetime.strptime(exdatetime, "%d/%m/%Y %H:%M").timestamp()
             )
             user, task = line[47:-1].split("> :: ", 1)
-            line = (
+            new_lines.append(
                 f"INSERT INTO audit (userId, startTime, endTime, motivation, approved, location) VALUES ('{user}', {in_timestamp}, {ex_timestamp}, '{task}', true, 'lab');"
             )
         except ValueError:
@@ -34,7 +35,7 @@ def convert_to_sql(file):
             break
     else:
         with open(sql_file, "w") as f:
-            f.writelines(lines)
+            f.writelines(new_lines)
 
 
 if __name__ == "__main__":
