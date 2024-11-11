@@ -27,7 +27,7 @@ def convert_to_sql(file):
             )
             user, task = line[47:-1].split("> :: ", 1)
             new_lines.append(
-                f"INSERT INTO audit (userId, startTime, endTime, motivation, approved, location) VALUES ('{user}', {in_timestamp}, {ex_timestamp}, '{task}', true, 'lab');"
+                f"INSERT INTO audit (userId, startTime, endTime, motivation, approved, location) VALUES ('{user}', {in_timestamp}, {ex_timestamp}, '{task}', true, 'lab');\n"
             )
         except ValueError:
             print(f"Error in {file} at line {i}: {line}")
