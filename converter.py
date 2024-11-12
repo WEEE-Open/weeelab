@@ -18,13 +18,16 @@ def convert_to_sql(file, dry_run=False):
     new_lines = []
     for i, line in enumerate(lines):
         try:
-            indatetime, exdatetime = line[1:17], line[20:36]
+            indatetime, exdatetime, duration = line[1:17], line[20:36], line[39:44]
             in_timestamp = int(
                 datetime.strptime(indatetime, "%d/%m/%Y %H:%M").timestamp()
             )
             ex_timestamp = int(
                 datetime.strptime(exdatetime, "%d/%m/%Y %H:%M").timestamp()
             )
+            d_time = duration.split(":")[0]*60 + duration.split(":")[1]
+            if d_time*60 != ex_timestamp - in_timestamp:
+                raise ValueError(f"Duration does not match. Explicit is {duration}, but time difference is {(ex_timestamp - in_timestamp)//3600}:{(ex_timestamp - in_timestamp)//60 % 60}")
             user, task = line[47:-1].split("> :: ", 1)
             new_lines.append(
                 f"INSERT INTO audit (userId, startTime, endTime, motivation, approved, location) VALUES ('{user}', {in_timestamp}, {ex_timestamp}, '{task}', true, 'lab');\n"
