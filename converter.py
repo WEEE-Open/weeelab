@@ -7,7 +7,7 @@ from pathlib import Path
 import traceback
 
 
-def convert_to_sql(file):
+def convert_to_sql(file, dry_run=False):
     if isinstance(file, str):
         file = Path(file)
 
@@ -34,8 +34,9 @@ def convert_to_sql(file):
             print(traceback.format_exc(0))
             break
     else:
-        with open(sql_file, "w") as f:
-            f.writelines(new_lines)
+        if not dry_run:
+            with open(sql_file, "w") as f:
+                f.writelines(new_lines)
 
 
 if __name__ == "__main__":
