@@ -35,7 +35,7 @@ def convert_to_sql(file, dry_run=False):
             ex_timestamp = int(
                 datetime.strptime(exdatetime, "%d/%m/%Y %H:%M").timestamp()
             )
-            d_time = duration.split(":")[0]*60 + duration.split(":")[1]
+            d_time = int(duration.split(":")[0])*60 + int(duration.split(":")[1])
             if d_time*60 != ex_timestamp - in_timestamp:
                 raise ValueError(f"Duration does not match. Explicit is {duration}, but time difference is {(ex_timestamp - in_timestamp)//3600}:{(ex_timestamp - in_timestamp)//60 % 60}")
             user, task = line[47:-1].split("> :: ", 1)
@@ -61,8 +61,9 @@ if __name__ == "__main__":
     for user in users:
         # Get ldap uuid
         filters = (
-            f"(&(objectClass=weeeOpenPerson)(schacpersonaluniquecode={escape_filter_chars(user)})(!(nsaccountlock=true)))",
-        )
+			f"(&(objectClass=weeeOpenPerson)(uid={escape_filter_chars(user)})(!(nsaccountlock=true)))",
+			f"(&(objectClass=weeeOpenPerson)(weeelabnickname={escape_filter_chars(user)})(!(nsaccountlock=true)))"
+		)
 
         conn = ldap.initialize(LDAP_HOST)
         conn.protocol_version = ldap.VERSION3
