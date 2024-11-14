@@ -20,6 +20,7 @@ from .exceptions import (DBConnectionError, LdapError, UserLoggedInError,
 
 @dataclass
 class User:
+    uuid: str
     username: str
     full_name: str
     first_name: str
@@ -67,7 +68,7 @@ def get_user(username: str) -> User:
             config["ldap"]["tree"],
             ldap.SCOPE_SUBTREE,
             ldap_filter,
-            ("uid", "cn", "givenname", "signedsir"),
+            ("weeeopenuniqueid", "uid", "cn", "givenname", "signedsir"),
         )
         if len(result) > 1:
             ambiguous = True
@@ -78,6 +79,7 @@ def get_user(username: str) -> User:
             else:
                 signed_sir = False
             return User(
+                attr["weeeopenuniqueid"][0].decode(),
                 attr["uid"][0].decode(),
                 attr["cn"][0].decode(),
                 attr["givenname"][0].decode(),
